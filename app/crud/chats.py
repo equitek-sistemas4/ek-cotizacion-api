@@ -9,11 +9,13 @@ from app.utils.utils import decrypt_token
 def create_chat(
     db: Session,
     name: str,
-    user_id: int
+    user_id: int,
+    quotation_id: int
 ) -> Chats:
     chat = Chats(
         name=name,
-        user_id=user_id
+        user_id=user_id,
+        quotation_id=quotation_id
     )
     db.add(chat)
     db.commit()
@@ -40,12 +42,21 @@ def delete_chat(db: Session, chat_id: int) -> bool:
     chat = db.query(Chats).filter(Chats.id == chat_id).first()
     if chat is None:
         return False
+    else:
+        chat.status = 0;
 
     db.query(ChatMembers).filter(ChatMembers.chat_id == chat_id).delete(
         synchronize_session=False
     )
-    db.delete(chat)
+
+    chat_members = db.query(ChatMembers).filters(ChatMembers.chat_id == chat_id)
+    for member in chat_members:
+        member.status = 0
+        db.commit()
+        db.refresh(member)
+
     db.commit()
+    db.refresh(chat)
     return True
 
 

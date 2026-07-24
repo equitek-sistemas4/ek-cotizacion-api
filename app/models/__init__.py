@@ -748,6 +748,7 @@ class Chats(Base):
     name = Column(String(100), nullable=False)
     user_id = Column(Integer, nullable=False)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
+    quotation_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
 
 

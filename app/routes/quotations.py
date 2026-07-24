@@ -83,12 +83,14 @@ async def create_link_quotation(
     name: str = Form(...),
     user_id: int = Form(...),
     contact_id: int = Form(...),
+    quotation_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
     chat = create_chat(
         db,
         name,
-        user_id
+        user_id,
+        quotation_id
     )
 
     contact = get_contact_by_id(db, contact_id)

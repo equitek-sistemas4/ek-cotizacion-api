@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import ChatMembers, Contact
+from app.models import ChatMembers, Chats, Contact
 from app.utils.utils import create_access_token, encrypt_token, generate_alphanumeric_code
 
 
@@ -52,9 +52,17 @@ def get_chat_member(
 
 
 def get_chat_member_by_code(db: Session, access_code: str) -> Optional[ChatMembers]:
-    chat_member = db.query(ChatMembers).filter(ChatMembers.access_code == access_code).first()
-    if chat_member is None:
+    result = (
+        db.query(ChatMembers, Chats.quotation_id)
+        .join(Chats, ChatMembers.chat_id == Chats.id)
+        .filter(ChatMembers.access_code == access_code)
+        .first()
+    )
+    if result is None:
         return None
+
+    chat_member, quotation_id = result
+    chat_member.quotation_id = quotation_id
     return chat_member
 
 

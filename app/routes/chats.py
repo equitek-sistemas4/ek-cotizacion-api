@@ -38,7 +38,7 @@ async def create_chat_route(
     chat = create_chat_db(
         db,
         name,
-        user_id
+        user_id,
     )
 
     return {

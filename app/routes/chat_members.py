@@ -23,6 +23,7 @@ async def get_chat_member_by_access_code_route(
         "data": {
             "id": chat_member.id,
             "chat_id": chat_member.chat_id,
+            "quotation_id":chat_member.quotation_id,
             "contact_id": chat_member.contact_id,
             "token": decrypt_token(chat_member.token),
             "created_at": chat_member.created_at.isoformat() if chat_member.created_at else None,

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Integer, case, cast, func, null, or_, select
 from sqlalchemy.orm import Session, aliased
@@ -45,7 +45,7 @@ from app.models import (
 )
 
 
-def get_quotation_info(quotation_id: int, db_quote: Session) -> dict[str, Any] | None:
+def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[str, Any]]:
     latest_requirement = (
         select(
             ncrm_req_est.fk_idcoti.label("idcoti"),
@@ -188,7 +188,7 @@ def get_prospect_quotation_info(
     prospect_id: int,
     quotation_id: int,
     db_quote: Session,
-) -> dict[str, Any] | None:
+) -> Optional[Dict[str, Any]]:
     company_rama = aliased(empresa_rama)
     company_size = aliased(empresa_tamano)
 
@@ -259,7 +259,7 @@ def get_products_quotation_info(
     quotation_id: int,
     db_quote: Session,
     language: str = "es",
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     product_stmt = (
         select(
             ncrm_producto.idprod,
@@ -297,7 +297,7 @@ def get_products_quotation_info(
         .order_by(cast(ncrm_presentacion.presentacion, Integer))
     )
 
-    presentations_by_product: dict[int, list[dict[str, Any]]] = {}
+    presentations_by_product: Dict[int, List[Dict[str, Any]]] = {}
     for row in db_quote.execute(presentation_stmt).mappings().all():
         presentation = dict(row)
         product_id = presentation.pop("fk_idprod")
@@ -313,7 +313,7 @@ def get_costs_quotation_info(
     quotation_id: int,
     db_quote: Session,
     can_view_costs: bool = True,
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     costo = ncrm_cotiext.costoe if can_view_costs else null()
 
     stmt = (
@@ -336,7 +336,7 @@ def get_conditions_quotation_info(
     quotation_id: int,
     db_quote: Session,
     language: str = "es",
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     description = (
         func.coalesce(ncrm_cond.descripcion_en, ncrm_cond.descripcion)
         if language.lower() == "en"
@@ -384,8 +384,8 @@ def get_conditions_quotation_info(
 def get_equipment_quotation_info(
     quotation_id: int,
     db_quote: Session,
-    equipment_id: int | None = None,
-) -> list[dict[str, Any]]:
+    equipment_id: Optional[int] = None,
+) -> List[Dict[str, Any]]:
     """Obtiene el hardware activo de una cotización y sus datos de proyecto."""
     scope_summary = (
         select(
