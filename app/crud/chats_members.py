@@ -10,34 +10,42 @@ from app.utils.utils import create_access_token, encrypt_token, generate_alphanu
 def add_member_to_chat(
     db: Session,
     chat_id: int,
-    contact_id: int,
-) -> ChatMembers:
-    existing_member = db.query(ChatMembers).filter(
-        ChatMembers.chat_id == chat_id,
-        ChatMembers.contact_id == contact_id,
-    ).first()
-    if existing_member is not None:
-        return existing_member
-    
-    access_token = create_access_token({
-        "sub": f"chat:{chat_id}:contact:{contact_id}",
-        "chat_id": chat_id,
-        "contact_id": contact_id,
-        "token_use": "chat_contact",
-    }, expires_delta=timedelta(days=180))
+    contact_ids: List[int],
+) -> List[ChatMembers]:
+    created_members = []
 
-    access_code = generate_alphanumeric_code()
+    for contact_id in contact_ids:
+        existing_member = db.query(ChatMembers).filter(
+            ChatMembers.chat_id == chat_id,
+            ChatMembers.contact_id == contact_id,
+        ).first()
+        if existing_member is not None:
+            continue
 
-    member = ChatMembers(
-        chat_id=chat_id,
-        contact_id=contact_id,
-        token=encrypt_token(access_token) if access_token else None,
-        access_code=access_code,
-    )
-    db.add(member)
-    db.commit()
-    db.refresh(member)
-    return member
+        access_token = create_access_token({
+            "sub": f"chat:{chat_id}:contact:{contact_id}",
+            "chat_id": chat_id,
+            "contact_id": contact_id,
+            "token_use": "chat_contact",
+        }, expires_delta=timedelta(days=180))
+
+        access_code = generate_alphanumeric_code()
+
+        member = ChatMembers(
+            chat_id=chat_id,
+            contact_id=contact_id,
+            token=encrypt_token(access_token) if access_token else None,
+            access_code=access_code,
+        )
+        db.add(member)
+        created_members.append(member)
+
+    if created_members:
+        db.commit()
+        for member in created_members:
+            db.refresh(member)
+
+    return created_members
 
 
 def get_chat_member(

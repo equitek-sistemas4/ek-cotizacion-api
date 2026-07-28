@@ -58,14 +58,26 @@ def get_contact_by_id(db: Session, contact_id: int) -> Optional[Contact]:
     return db.query(Contact).filter(Contact.id == contact_id).first()
 
 
-def delete_contact(db: Session, contact_id: int) -> bool:
+def delete_contact(db: Session, contact_id: int):
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if contact is None:
-        return False
+        return {"deleted": False, "reason": "not_found"}
+
+    try:
+        from app.models import ChatMembers
+
+        referenced = (
+            db.query(ChatMembers).filter(ChatMembers.contact_id == contact_id).count() > 0
+        )
+    except Exception:
+        referenced = False
+
+    if referenced:
+        return {"deleted": False, "reason": "referenced"}
 
     db.delete(contact)
     db.commit()
-    return True
+    return {"deleted": True}
 
 
 def get_all_contacts(db: Session) -> List[Contact]:

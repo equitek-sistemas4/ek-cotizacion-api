@@ -1,4 +1,4 @@
-from datetime import timedelta
+from typing import List
 
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
@@ -82,7 +82,7 @@ async def get_quotation_equipment_route(quotation_id: int, db_quote: Session = D
 async def create_link_quotation(
     name: str = Form(...),
     user_id: int = Form(...),
-    contact_id: int = Form(...),
+    contact_ids: List[int] = Form(...),
     quotation_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
@@ -90,32 +90,44 @@ async def create_link_quotation(
         db,
         name,
         user_id,
-        quotation_id
+        quotation_id,
     )
 
-    contact = get_contact_by_id(db, contact_id)
-    if contact is None:
+    if not contact_ids:
         return {
             "success": False,
-            "message": "Contacto no encontrado",
+            "message": "Debes enviar al menos un contact_id",
         }
 
-    member = add_member_to_chat(db, chat.id, contact_id)
-    if member is None:
-        return {
-            "success": False,
-            "message": "El contacto no pertenece al chat",
-        }
+    results = []
+    missing_contacts = []
 
-    return {
-        "success": True,
-        "message": "Token generado",
-        "data": {
+    for contact_id in contact_ids:
+        contact = get_contact_by_id(db, contact_id)
+        if contact is None:
+            missing_contacts.append(contact_id)
+            continue
+
+        members = add_member_to_chat(db, chat.id, [contact_id])
+        if not members:
+            continue
+
+        member = members[0]
+        results.append({
             "access_token": member.token,
             "access_code": member.access_code,
             "token_type": "bearer",
             "chat_id": chat.id,
             "contact_id": contact_id,
+        })
+
+    return {
+        "success": True,
+        "message": "Tokens generados",
+        "data": {
+            "chat_id": chat.id,
+            "results": results,
+            "missing_contacts": missing_contacts,
         },
     }
 

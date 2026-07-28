@@ -2,6 +2,7 @@ from app.crud.chats_members import get_members_availables_of_chat
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.crud.contacts import create_contact, delete_contact, get_all_contacts, update_contact
@@ -95,15 +96,25 @@ async def update_contact_route(
 
 
 
-@router.post("/delete/{contact_id}")
+@router.delete("/delete/{contact_id}")
 async def delete_contact_route(contact_id: int, db: Session = Depends(get_db)):
-    success = delete_contact(db, contact_id)
-    if not success:
-        return {
-            "success": False,
-            "message": "Contacto no encontrado",
-        }
-    return {
-        "success": True,
-        "message": "Contacto eliminado",
-    }
+    result = delete_contact(db, contact_id)
+    if not result.get("deleted"):
+        reason = result.get("reason")
+        if reason == "not_found":
+            return JSONResponse(
+                status_code=404, content={"success": False, "message": "Contacto no encontrado"}
+            )
+        if reason == "referenced":
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "No se puede eliminar: el contacto está asociado a uno o más miembros de chat",
+                },
+            )
+        return JSONResponse(
+            status_code=400, content={"success": False, "message": "No se pudo eliminar el contacto"}
+        )
+
+    return JSONResponse(status_code=200, content={"success": True, "message": "Contacto eliminado"})

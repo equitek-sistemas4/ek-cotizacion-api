@@ -1,5 +1,4 @@
-from datetime import timedelta
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -118,8 +117,8 @@ async def get_chat_messages_route(
 @router.post("/{chat_id}/members")
 async def add_chat_member(
     chat_id: int,
-    contact_id: int = Form(...),
-    db: Session = Depends(get_db)
+    contact_ids: List[int] = Form(...),
+    db: Session = Depends(get_db),
 ):
     chat = get_chat_by_id(db, chat_id)
     if chat is None:
@@ -128,40 +127,42 @@ async def add_chat_member(
             "message": "Chat no encontrado",
         }
 
-    contact = get_contact_by_id(db, contact_id)
-    if contact is None:
+    if not contact_ids:
         return {
             "success": False,
-            "message": "Contacto no encontrado",
+            "message": "Debes enviar al menos un contact_id",
         }
 
-    member = add_member_to_chat(
-        db,
-        chat_id=chat_id,
-        contact_id=contact_id,
-    )
+    created_members = []
+    missing_contacts = []
 
-    """ access_token = create_access_token({
-        "sub": f"chat:{chat_id}:contact:{contact_id}",
-        "chat_id": chat_id,
-        "contact_id": contact_id,
-        "token_use": "chat_contact",
-    }, expires_delta=timedelta(days=180))
+    for contact_id in contact_ids:
+        contact = get_contact_by_id(db, contact_id)
+        if contact is None:
+            missing_contacts.append(contact_id)
+            continue
 
-    chat_member = update_token_member_chat(db, chat_id, contact_id, access_token)
-    if chat_member is None:
-        return {
-            "success": False,
-            "message": "No se pudo actualizar el token del miembro",
-        } """
+        members = add_member_to_chat(
+            db,
+            chat_id=chat_id,
+            contact_ids=[contact_id],
+        )
+        created_members.extend(members)
 
     return {
         "success": True,
-        "message": "Participante agregado",
+        "message": "Participantes agregados",
         "data": {
-            "id": member.id,
-            "chat_id": member.chat_id,
-            "contact_id": member.contact_id,
+            "chat_id": chat_id,
+            "added_members": [
+                {
+                    "id": member.id,
+                    "chat_id": member.chat_id,
+                    "contact_id": member.contact_id,
+                }
+                for member in created_members
+            ],
+            "missing_contacts": missing_contacts,
         }
     }
 
