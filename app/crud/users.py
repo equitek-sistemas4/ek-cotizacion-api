@@ -65,7 +65,6 @@ def update_user(
     user_id: int,
     name: Optional[str] = None,
     email: Optional[str] = None,
-    password: Optional[str] = None,
     phone_number: Optional[str] = None,
 ) -> Optional[Users]:
     user = db.query(Users).filter(Users.id == user_id).first()
@@ -76,8 +75,6 @@ def update_user(
         user.name = name
     if email is not None:
         user.email = email
-    if password is not None:
-        user.password = hash_password(password)
     if phone_number is not None:
         user.phone_number = clean_user_phone_number(phone_number)
 

@@ -78,7 +78,6 @@ async def update_user_route(
     user_id: int,
     name: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -87,7 +86,6 @@ async def update_user_route(
         user_id=user_id,
         name=name,
         email=email,
-        password=password,
         phone_number=phone_number,
     )
 
