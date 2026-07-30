@@ -811,3 +811,30 @@ class Users(Base):
     phone_number = Column(String(30), index=True, nullable=False)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
     created_at = Column(DateTime, default=datetime.now)
+
+
+class Permissions(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class Roles(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class Role_permission(Base):
+    __tablename__ = "role_permission"
+
+    id = Column(Integer, primary_key=True, index=True)
+    role_id = Column(Integer, index=True, nullable=False)
+    permission_id = Column(Integer, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
