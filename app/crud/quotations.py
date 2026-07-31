@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session, aliased
 
 from app.models import (
     ncrm_alcval,
+    ncrm_alcvalequ,
+    ncrm_alcequ,
     ncrm_arch,
     ncrm_cestcot,
     ncrm_coment,
@@ -13,6 +15,7 @@ from app.models import (
     ncrm_cotiext,
     ncrm_coti,
     ncrm_cotstatus,
+    ncrm_calcances,
     ncrm_equipos,
     ncrm_notas,
     ncrm_proceso,
@@ -29,6 +32,9 @@ from app.models import (
     empresa_rama,
     empresa_tamano,
     equipo_medida,
+    equipo_alcance,
+    equipo_alcances,
+    equipo_fam_alcances,
     equipo,
     equipo_costo,
     equipo_familia,
@@ -314,7 +320,7 @@ def get_costs_quotation_info(
     db_quote: Session,
     can_view_costs: bool = True,
 ) -> List[Dict[str, Any]]:
-    costo = ncrm_cotiext.costoe if can_view_costs else null()
+    costo = ncrm_cotiext.costoe
 
     stmt = (
         select(
@@ -465,3 +471,140 @@ def get_equipment_quotation_info(
         stmt = stmt.where(ncrm_equipos.idcequipos == equipment_id)
 
     return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+
+
+def get_configured_equipment_scopes(
+    equipment_id: int,
+    db_quote: Session,
+) -> List[Dict[str, Any]]:
+    stmt = (
+        select(
+            equipo_alcances.idequipo_alcance,
+            equipo_alcance.idalcance.label("fk_idalcance"),
+            equipo_alcance.alcance,
+            equipo_alcances.minimo,
+            equipo_alcances.maximo,
+            equipo_medida.medida,
+        )
+        .select_from(equipo_alcances)
+        .outerjoin(
+            equipo_fam_alcances,
+            equipo_alcances.fk_idfam_alc == equipo_fam_alcances.idfam_alc,
+        )
+        .outerjoin(
+            equipo_alcance,
+            equipo_fam_alcances.fk_idalcance == equipo_alcance.idalcance,
+        )
+        .outerjoin(
+            equipo_medida,
+            equipo_alcance.fk_idmedida == equipo_medida.idmedida,
+        )
+        .where(
+            equipo_alcances.estado == 1,
+            equipo_fam_alcances.estado == 1,
+            equipo_alcance.estado == 1,
+            equipo_alcances.fk_idequipo == equipment_id,
+        )
+        .order_by(equipo_alcance.orden)
+    )
+
+    return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+
+
+def get_equipment_scopes(
+    presentation_id: int,
+    quotation_id: int,
+    db_quote: Session,
+    equipment_id: Optional[int] = None,
+    language: str = "es",
+) -> Dict[str, Any]:
+    scope_name = equipo_alcance.alcance_en if language.lower() == "en" else equipo_alcance.alcance
+    measure = equipo_medida.medida_en if language.lower() == "en" else equipo_medida.medida
+
+    active_scope_ids = (
+        select(ncrm_alcequ.idalcequ)
+        .where(
+            ncrm_alcequ.estado == 1,
+            ncrm_alcequ.fk_idpresen == presentation_id,
+        )
+    )
+
+    validation_values_stmt = (
+        select(
+            ncrm_alcvalequ.fk_idalcequ,
+            func.group_concat(ncrm_alcvalequ.fk_idalcval).label("fk_idalcval"),
+        )
+        .select_from(ncrm_alcvalequ)
+        .outerjoin(ncrm_alcval, ncrm_alcvalequ.fk_idalcval == ncrm_alcval.idalcval)
+        .where(
+            ncrm_alcval.estado == 1,
+            ncrm_alcvalequ.fk_idalcequ.in_(active_scope_ids),
+        )
+        .group_by(ncrm_alcvalequ.fk_idalcequ)
+    )
+    if equipment_id is not None:
+        validation_values_stmt = validation_values_stmt.where(
+            ncrm_alcval.fk_idcequipo == equipment_id
+        )
+
+    validation_values = validation_values_stmt.subquery()
+    scopes_stmt = (
+        select(
+            ncrm_alcequ.idalcequ,
+            scope_name.label("alcance"),
+            ncrm_alcequ.valor,
+            measure.label("medida"),
+            ncrm_calcances.fk_idalcance,
+            validation_values.c.fk_idalcval,
+        )
+        .select_from(ncrm_calcances)
+        .outerjoin(
+            equipo_alcance,
+            ncrm_calcances.fk_idalcance == equipo_alcance.idalcance,
+        )
+        .outerjoin(equipo_medida, equipo_alcance.fk_idmedida == equipo_medida.idmedida)
+        .outerjoin(
+            ncrm_alcequ,
+            (ncrm_calcances.fk_idalcance == ncrm_alcequ.fk_idalcance)
+            & (ncrm_alcequ.estado == 1)
+            & (ncrm_alcequ.fk_idpresen == presentation_id),
+        )
+        .outerjoin(
+            validation_values,
+            validation_values.c.fk_idalcequ == ncrm_alcequ.idalcequ,
+        )
+        .where(
+            ncrm_calcances.estado == 1,
+            equipo_alcance.estado == 1,
+            ncrm_calcances.fk_idcoti == quotation_id,
+        )
+        .group_by(ncrm_calcances.fk_idalcance)
+        .order_by(equipo_alcance.orden)
+    )
+    scopes = [dict(row) for row in db_quote.execute(scopes_stmt).mappings().all()]
+
+    presentation_stmt = (
+        select(
+            ncrm_presentacion.idpresen,
+            ncrm_presentacion.presentacion,
+            measure.label("medida"),
+            ncrm_presentacion.produccion,
+            ncrm_presentacion.compres.label("comentario"),
+        )
+        .outerjoin(equipo_medida, ncrm_presentacion.fk_idmedida == equipo_medida.idmedida)
+        .where(
+            ncrm_presentacion.estado == 1,
+            ncrm_presentacion.idpresen == presentation_id,
+        )
+        .order_by(cast(ncrm_presentacion.presentacion, Integer))
+    )
+    presentation_row = db_quote.execute(presentation_stmt).mappings().first()
+
+    return {
+        "success": bool(scopes),
+        "message": "Consulta exitosa" if scopes else "Sin resultados",
+        "data": {
+            "Alcances": scopes,
+            "Presentacion": dict(presentation_row) if presentation_row else None,
+        },
+    }

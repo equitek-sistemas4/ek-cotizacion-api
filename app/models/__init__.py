@@ -236,6 +236,44 @@ class equipo_costo(Base_quote):
     costoe = Column(Numeric(10, 4), nullable=True)
 
 
+class equipo_alcances(Base_quote):
+    __tablename__ = "equipo_alcances"
+
+    idequipo_alcance = Column(Integer, primary_key=True, index=True)
+    fk_idequipo = Column(Integer, nullable=False)
+    fk_idfam_alc = Column(Integer, nullable=False)
+    maximo = Column(Numeric(10, 2), nullable=False)
+    minimo = Column(Numeric(10, 2), nullable=False)
+    estado = Column(Integer, nullable=False)
+    fecha = Column(DateTime, nullable=True)
+    fk_idusuario = Column(Integer, nullable=False)
+
+
+class equipo_fam_alcances(Base_quote):
+    __tablename__ = "equipo_fam_alcances"
+
+    idfam_alc = Column(Integer, primary_key=True, index=True)
+    fk_idalcance = Column(Integer, nullable=False)
+    fk_idfamilia = Column(Integer, nullable=False)
+    estado = Column(Integer, nullable=False)
+    fecha = Column(DateTime, nullable=False)
+    fk_idusuario = Column(Integer, nullable=False)
+    fk_usuariob = Column(Integer, nullable=True)
+    fechab = Column(DateTime, nullable=True)
+
+
+class equipo_alcance(Base_quote):
+    __tablename__ = "equipo_alcance"
+
+    idalcance = Column(Integer, primary_key=True, index=True)
+    alcance = Column(String(250), nullable=False)
+    fk_idmedida = Column(Integer, nullable=False)
+    estado = Column(Integer, nullable=False)
+    orden = Column(Integer, nullable=True)
+    descalc = Column(String(1500), nullable=True)
+    alcance_en = Column(String(250), nullable=True)
+
+
 class ncrm_alcequ(Base_quote):
     __tablename__ = "ncrm_alcequ"
 
