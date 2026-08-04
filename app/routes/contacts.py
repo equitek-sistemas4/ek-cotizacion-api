@@ -1,11 +1,19 @@
 from app.crud.chats_members import get_members_availables_of_chat
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.crud.contacts import create_contact, delete_contact, get_all_contacts, update_contact
+from app.crud.contacts import (
+    create_contact,
+    create_contact_request,
+    delete_contact,
+    approve_contact_request,
+    get_all_contact_requests,
+    get_all_contacts,
+    update_contact,
+)
 from app.database import get_db
 
 
@@ -29,6 +37,60 @@ async def get_all_contacts_route(db: Session = Depends(get_db)):
     return {
         "success": True,
         "data": [serialize_contact(contact) for contact in contacts],
+    }
+
+
+@router.get("/list-requests/{status}")
+async def get_all_contact_requests_route(status: Optional[str] = None, db: Session = Depends(get_db)):
+    contact_requests = get_all_contact_requests(db, status=status)
+    return {
+        "success": True,
+        "data": contact_requests,
+    }
+
+
+@router.post("/requests/{contact_request_id}/approve")
+async def approve_contact_request_route(
+    contact_request_id: int,
+    db: Session = Depends(get_db),
+):
+    result = approve_contact_request(db, contact_request_id)
+    if not result["approved"]:
+        reason = result["reason"]
+        if reason == "not_found":
+            raise HTTPException(status_code=404, detail="Solicitud de contacto no encontrada")
+        if reason == "chat_not_found":
+            raise HTTPException(status_code=404, detail="Chat de la solicitud no encontrado")
+        raise HTTPException(
+            status_code=409,
+            detail="La solicitud ya fue procesada y no puede aprobarse",
+        )
+
+    contact_request = result["contact_request"]
+    contact = result["contact"]
+    chat_member = result["chat_member"]
+    return {
+        "success": True,
+        "message": "Solicitud de contacto aprobada",
+        "data": {
+            "contact_request": {
+                "id": contact_request.id,
+                "chat_id": contact_request.chat_id,
+                "status": contact_request.status,
+            },
+            "contact": serialize_contact(contact),
+            "chat_member": {
+                "id": chat_member.id,
+                "chat_id": chat_member.chat_id,
+                "contact_id": chat_member.contact_id,
+                "access_code": chat_member.access_code,
+                "created_at": (
+                    chat_member.created_at.isoformat()
+                    if chat_member.created_at
+                    else None
+                ),
+            },
+        },
     }
 
 
@@ -61,6 +123,41 @@ async def create_contact_route(
         "success": True,
         "message": "Contacto creado",
         "data": serialize_contact(contact),
+    }
+
+
+@router.post("/create-request")
+async def create_contact_request_route(
+    chat_id: int = Form(...),
+    contact_name: str = Form(...),
+    contact_phone_number: str = Form(...),
+    contact_display_name: Optional[str] = Form(None),
+    contact_company: Optional[str] = Form(None),
+    contact_position: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    contact_request = create_contact_request(
+        db,
+        chat_id=chat_id,
+        contact_name=contact_name,
+        contact_phone_number=contact_phone_number,
+        contact_display_name=contact_display_name,
+        contact_company=contact_company,
+        contact_position=contact_position
+    )
+
+    return {
+        "success": True,
+        "message": "Solicitud de contacto creada",
+        "data": {
+            "id": contact_request.id,
+            "chat_id": contact_request.chat_id,
+            "contact_name": contact_request.contact_name,
+            "contact_phone_number": contact_request.contact_phone_number,
+            "contact_display_name": contact_request.contact_display_name,
+            "contact_company": contact_request.contact_company,
+            "created_at": contact_request.created_at.isoformat() if contact_request.created_at else None,
+        },
     }
 
 

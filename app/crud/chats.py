@@ -92,6 +92,7 @@ def get_chat_with_members(db: Session, chat_id: int) -> Optional[Dict]:
                 "phone_number": contact.phone_number,
                 "display_name": contact.display_name,
                 "company": contact.company,
+                "position": contact.position,
                 "created_at": contact.created_at.isoformat() if contact.created_at else None,
             } if contact else None,
         }

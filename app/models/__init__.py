@@ -836,6 +836,7 @@ class Contact(Base):
     display_name = Column(String(100), nullable=True)
     company = Column(String(100), nullable=True)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
+    position = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
 
@@ -875,4 +876,18 @@ class Role_permission(Base):
     id = Column(Integer, primary_key=True, index=True)
     role_id = Column(Integer, index=True, nullable=False)
     permission_id = Column(Integer, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class Contact_requests(Base):
+    __tablename__ = "contact_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, nullable=False)
+    contact_name = Column(String(100), nullable=False)
+    contact_phone_number = Column(String(30), nullable=False)
+    contact_display_name = Column(String(100), nullable=False)
+    contact_company = Column(String(100), nullable=False)
+    contact_position = Column(String(255), nullable=False)
+    status = Column(Enum("pending", "approved", "rejected"), default="pending")
     created_at = Column(DateTime, default=datetime.now)
