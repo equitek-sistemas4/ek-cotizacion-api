@@ -30,6 +30,7 @@ DEFAULT_CHAT_MEMBER_CONTACT_ID = 1
 @router.post("/create")
 async def create_chat_route(
     name: str = Form(...),
+    description: Optional[str] = Form(None),
     user_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
@@ -37,6 +38,7 @@ async def create_chat_route(
     chat = create_chat_db(
         db,
         name,
+        description,
         user_id,
     )
 
@@ -46,6 +48,7 @@ async def create_chat_route(
         "data": {
             "id": chat.id,
             "name": chat.name,
+            "description": chat.description,
         }
     }
 
@@ -64,6 +67,8 @@ async def get_all_chats_route(
             {
                 "id": chat.id,
                 "name": chat.name,
+                "description": chat.description,
+                "quotation_id": chat.quotation_id,
                 "status": chat.status,
                 "created_at": chat.created_at.isoformat() if chat.created_at else None,
             }

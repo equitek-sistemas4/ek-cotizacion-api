@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
@@ -191,6 +191,7 @@ async def get_quotation_equipment_scopes_route(
 @router.post("/create-link")
 async def create_link_quotation(
     name: str = Form(...),
+    description: Optional[str] = Form(None),
     user_id: int = Form(...),
     contact_ids: List[int] = Form(...),
     quotation_id: int = Form(...),
@@ -199,6 +200,7 @@ async def create_link_quotation(
     chat = create_chat(
         db,
         name,
+        description,
         user_id,
         quotation_id,
     )

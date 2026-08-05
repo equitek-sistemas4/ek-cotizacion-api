@@ -784,6 +784,7 @@ class Chats(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
     user_id = Column(Integer, nullable=False)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
     quotation_id = Column(Integer, nullable=False)

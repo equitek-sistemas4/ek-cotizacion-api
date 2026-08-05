@@ -9,11 +9,13 @@ from app.utils.utils import decrypt_token
 def create_chat(
     db: Session,
     name: str,
+    description: Optional[str],
     user_id: int,
     quotation_id: int
 ) -> Chats:
     chat = Chats(
         name=name,
+        description=description,
         user_id=user_id,
         quotation_id=quotation_id
     )
@@ -23,12 +25,13 @@ def create_chat(
     return chat
 
 
-def update_chat(db: Session, chat_id: int, name: str) -> Optional[Chats]:
+def update_chat(db: Session, chat_id: int, name: str, description: Optional[str] = None) -> Optional[Chats]:
     chat = db.query(Chats).filter(Chats.id == chat_id).first()
     if chat is None:
         return None
 
     chat.name = name
+    chat.description = description
     db.commit()
     db.refresh(chat)
     return chat
@@ -102,6 +105,8 @@ def get_chat_with_members(db: Session, chat_id: int) -> Optional[Dict]:
     return {
         "id": chat.id,
         "name": chat.name,
+        "description": chat.description,
+        "quotation_id": chat.quotation_id,
         "created_at": chat.created_at.isoformat() if chat.created_at else None,
         "members": members,
     }

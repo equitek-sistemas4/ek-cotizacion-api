@@ -142,6 +142,7 @@ def get_all_contact_requests(db: Session, status: str) -> List[Dict]:
                 "user_id": chat.user_id,
                 "status": chat.status,
                 "quotation_id": chat.quotation_id,
+                "description": chat.description,
                 "created_at": chat.created_at.isoformat() if chat.created_at else None,
             }
             if chat
