@@ -10,6 +10,7 @@ from app.crud.contacts import (
     create_contact_request,
     delete_contact,
     approve_contact_request,
+    reject_contact_request,
     get_all_contact_requests,
     get_all_contacts,
     update_contact,
@@ -90,6 +91,32 @@ async def approve_contact_request_route(
                     else None
                 ),
             },
+        },
+    }
+
+
+@router.post("/requests/{contact_request_id}/reject")
+async def reject_contact_request_route(
+    contact_request_id: int,
+    db: Session = Depends(get_db),
+):
+    result = reject_contact_request(db, contact_request_id)
+    if not result["rejected"]:
+        if result["reason"] == "not_found":
+            raise HTTPException(status_code=404, detail="Solicitud de contacto no encontrada")
+        raise HTTPException(
+            status_code=409,
+            detail="La solicitud ya fue procesada y no puede rechazarse",
+        )
+
+    contact_request = result["contact_request"]
+    return {
+        "success": True,
+        "message": "Solicitud de contacto rechazada",
+        "data": {
+            "id": contact_request.id,
+            "chat_id": contact_request.chat_id,
+            "status": contact_request.status,
         },
     }
 

@@ -226,3 +226,25 @@ def approve_contact_request(db: Session, contact_request_id: int) -> Dict:
         "contact": contact,
         "chat_member": chat_member,
     }
+
+
+def reject_contact_request(db: Session, contact_request_id: int) -> Dict:
+    contact_request = (
+        db.query(Contact_requests)
+        .filter(Contact_requests.id == contact_request_id)
+        .first()
+    )
+    if contact_request is None:
+        return {"rejected": False, "reason": "not_found"}
+
+    if contact_request.status != "pending":
+        return {"rejected": False, "reason": "invalid_status"}
+
+    contact_request.status = "rejected"
+    db.commit()
+    db.refresh(contact_request)
+
+    return {
+        "rejected": True,
+        "contact_request": contact_request,
+    }

@@ -61,7 +61,7 @@ def get_chat_member(
 
 def get_chat_member_by_code(db: Session, access_code: str) -> Optional[ChatMembers]:
     result = (
-        db.query(ChatMembers, Chats.quotation_id)
+        db.query(ChatMembers, Chats.quotation_id, Chats.user_id)
         .join(Chats, ChatMembers.chat_id == Chats.id)
         .filter(ChatMembers.access_code == access_code)
         .first()
@@ -69,8 +69,9 @@ def get_chat_member_by_code(db: Session, access_code: str) -> Optional[ChatMembe
     if result is None:
         return None
 
-    chat_member, quotation_id = result
+    chat_member, quotation_id, user_id = result
     chat_member.quotation_id = quotation_id
+    chat_member.user_id = user_id
     return chat_member
 
 

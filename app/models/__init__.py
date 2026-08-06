@@ -1,4 +1,5 @@
 from datetime import datetime
+from xmlrpc.client import Boolean
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 from app.database import Base, Base_quote
@@ -891,4 +892,14 @@ class Contact_requests(Base):
     contact_company = Column(String(100), nullable=False)
     contact_position = Column(String(255), nullable=False)
     status = Column(Enum("pending", "approved", "rejected"), default="pending")
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class Notifications(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    section = Column(String(100), nullable=False)
+    status = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.now)

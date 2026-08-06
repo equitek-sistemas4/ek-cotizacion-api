@@ -109,13 +109,6 @@ async def get_quotation_equipment_scopes_route(
             equipment_info["idequipo"],
             db_quote,
         )
-        print(
-            "[equipment/scopes]",
-            f"idcequipos={equipment_info['idcequipos']}",
-            f"idequipo={equipment_info['idequipo']}",
-            "configured_scope_ids=",
-            [scope["fk_idalcance"] for scope in configured_scopes],
-        )
         scope_values_by_presentation = {}
 
         for presentation in presentations:
@@ -127,19 +120,6 @@ async def get_quotation_equipment_scopes_route(
                 db_quote=db_quote,
             )
             scopes = scopes_response["data"]["Alcances"]
-            print(
-                "[equipment/scopes]",
-                f"idpresen={presentation['idpresen']}",
-                "returned_scopes=",
-                [
-                    {
-                        "fk_idalcance": scope["fk_idalcance"],
-                        "idalcequ": scope["idalcequ"],
-                        "valor": scope["valor"],
-                    }
-                    for scope in scopes
-                ],
-            )
             scope_values_by_presentation[presentation["idpresen"]] = {
                 scope["fk_idalcance"]: scope
                 for scope in scopes
