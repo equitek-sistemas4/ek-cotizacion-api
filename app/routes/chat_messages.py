@@ -2,9 +2,10 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from app.database import get_db
+from app.database import get_db, get_db_vmaps
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
 
 from app.crud.chats import get_chat_by_id
 from app.crud.chats_messages import get_messages
@@ -38,6 +39,7 @@ async def create_chat_message_route(
     text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
+    db_vmaps: Session = Depends(get_db_vmaps),
 ):
     sender_type = sender_type.strip().lower()
     if sender_type not in ("user", "contact"):
@@ -49,27 +51,36 @@ async def create_chat_message_route(
 
     chat = get_chat_by_id(db, chat_id)
     if chat is None:
-        return {
-            "success": False,
-            "message": "Chat no encontrado",
-        }
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "message": "Chat no encontrado",
+            },
+        )
 
     contact = None
     user = None
     if sender_type == "contact":
         contact = get_contact_by_id(db, sender_id)
         if contact is None:
-            return {
-                "success": False,
-                "message": "Contacto no encontrado",
-            }
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Contacto no encontrado",
+                },
+            )
     else:
-        user = get_user_by_id(db, sender_id)
+        user = get_user_by_id(db_vmaps, sender_id)
         if user is None:
-            return {
-                "success": False,
-                "message": "Usuario no encontrado",
-            }
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Usuario no encontrado",
+                },
+            )
 
     stored_path = None
     try:
@@ -152,8 +163,9 @@ async def create_chat_message_route(
 async def get_chat_messages_route(
     chat_id: int,
     db: Session = Depends(get_db),
+    db_vmaps: Session = Depends(get_db_vmaps),
 ):
-    chats = get_messages(db, chat_id)
+    chats = get_messages(db, db_vmaps, chat_id)
     return {
         "success": True,
         "data": [

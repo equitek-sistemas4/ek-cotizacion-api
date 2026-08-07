@@ -1,12 +1,12 @@
 from typing import List, Optional, Tuple
 
-from app.models import ChatMessages, Contact, Users
+from app.models import ChatMessages, Contact, Usuarios
 
 
 def serialize_sender(
     message: ChatMessages,
     contact: Optional[Contact] = None,
-    user: Optional[Users] = None,
+    user: Optional[Usuarios] = None,
 ) -> Optional[dict]:
     if message.sender_type == "contact" and contact:
         return {
@@ -17,9 +17,9 @@ def serialize_sender(
 
     if message.sender_type == "user" and user:
         return {
-            "id": user.id,
+            "id": user.idusuario,
             "type": "user",
-            "display_name": user.name,
+            "display_name": user.nombres,
         }
 
     return None
@@ -28,7 +28,7 @@ def serialize_sender(
 def serialize_chat_message(
     message: ChatMessages,
     contact: Optional[Contact] = None,
-    user: Optional[Users] = None,
+    user: Optional[Usuarios] = None,
 ) -> dict:
     return {
         "message": {
@@ -52,7 +52,7 @@ def serialize_chat_message(
 
 
 def serialize_chat_messages(
-    messages: List[Tuple[ChatMessages, Optional[Contact], Optional[Users]]],
+    messages: List[Tuple[ChatMessages, Optional[Contact], Optional[Usuarios]]],
 ) -> dict:
     return {
         "data": [

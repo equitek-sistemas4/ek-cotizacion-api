@@ -24,6 +24,12 @@ class Settings:
     mysql_password_quote = os.getenv("MYSQL_PASSWORD_QUOTE")
     mysql_database_quote = os.getenv("MYSQL_DATABASE_QUOTE")
 
+    mysql_host_vmaps = os.getenv("MYSQL_HOST_VMAPS")
+    mysql_port_vmaps = os.getenv("MYSQL_PORT_VMAPS")
+    mysql_user_vmaps = os.getenv("MYSQL_USER_VMAPS")
+    mysql_password_vmaps = os.getenv("MYSQL_PASSWORD_VMAPS")
+    mysql_database_vmaps = os.getenv("MYSQL_DATABASE_VMAPS")
+
     secret_key = os.getenv("SECRET_KEY")
     access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "600"))
     cors_origins = [

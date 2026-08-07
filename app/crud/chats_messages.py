@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models import ChatMessages, Contact, Users
+from app.models import ChatMessages, Contact, Usuarios
 
 
 def create_chat_message(
@@ -27,23 +27,17 @@ def create_chat_message(
 
 def get_messages(
     db: Session,
+    db_vmaps: Session,
     chat_id: int,
     limit: int = 100,
-) -> List[Tuple[ChatMessages, Optional[Contact], Optional[Users]]]:
-    return (
-        db.query(ChatMessages, Contact, Users)
+) -> List[Tuple[ChatMessages, Optional[Contact], Optional[Usuarios]]]:
+    messages = (
+        db.query(ChatMessages, Contact)
         .outerjoin(
             Contact,
             and_(
                 ChatMessages.sender_type == "contact",
                 ChatMessages.sender_id == Contact.id,
-            ),
-        )
-        .outerjoin(
-            Users,
-            and_(
-                ChatMessages.sender_type == "user",
-                ChatMessages.sender_id == Users.id,
             ),
         )
         .filter(ChatMessages.chat_id == chat_id)
@@ -52,11 +46,26 @@ def get_messages(
         .all()
     )
 
+    user_ids = {
+        message.sender_id
+        for message, _contact in messages
+        if message.sender_type == "user" and message.sender_id is not None
+    }
+    users_by_id = {
+        user.idusuario: user
+        for user in db_vmaps.query(Usuarios).filter(Usuarios.idusuario.in_(user_ids)).all()
+    } if user_ids else {}
+
+    return [
+        (message, contact, users_by_id.get(message.sender_id))
+        for message, contact in messages
+    ]
+
 
 def serialize_chat_message(
     message: ChatMessages,
     contact: Optional[Contact] = None,
-    user: Optional[Users] = None,
+    user: Optional[Usuarios] = None,
 ) -> dict:
     sender = contact if message.sender_type == "contact" else user
 

@@ -2,10 +2,10 @@ from datetime import datetime
 from xmlrpc.client import Boolean
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
-from app.database import Base, Base_quote
+from app.database import Base, Base_quote, Base_vmaps
 
 
-############ MODELOS DE LA BASE DE DATOS DE COTIZACIONES ###########
+######################## MODELOS DE LA BASE DE DATOS DE COTIZACIONES #######################
 class iva(Base_quote):
     __tablename__ = "iva"
 
@@ -767,7 +767,45 @@ class ncrmp_producto(Base_quote):
     descripcion = Column(String(500), nullable=True)
 
 
-############ MODELOS DE LA BASE DE DATOS PRINCIPAL ###########
+######################## MODELOS DE LA BASE DE DATOS VMAPS3 ########################
+class Usuarios(Base_vmaps):
+    __tablename__ = "usuarios"
+
+    idusuario = Column(Integer, primary_key=True, index=True)
+    numero_empleado = Column(Integer, nullable=True)
+    usuario = Column(String(45), nullable=False)
+    usuario_nuevo = Column(String(50), nullable=True)
+    usuario_alternativo = Column(String(45), nullable=True)
+    contrasena = Column(String(300), nullable=True)
+    nombres = Column(String(45), nullable=False)
+    apellido_paterno = Column(String(45), nullable=False)
+    apellido_materno = Column(String(45), nullable=True)
+    correo = Column(String(200), nullable=True)
+    correo_alternativo = Column(String(200), nullable=True)
+    rfc = Column(String(45), nullable=True)
+    curp = Column(String(45), nullable=True)
+    nss = Column(String(45), nullable=True)
+    domicilio = Column(Text, nullable=True)
+    fecha_nacimiento = Column(DateTime, nullable=True)
+    fecha_registro = Column(DateTime, nullable=True)
+    fecha_ingreso = Column(DateTime, nullable=True)
+    saldo_vacaciones = Column(Integer, nullable=True)
+    correspondientes = Column(Integer, nullable=False)
+    disfrutado = Column(Integer, nullable=False)
+    permisos_permitido = Column(Text, nullable=True)
+    permisos_denegado = Column(Text, nullable=True)
+    permisos_nivel = Column(Integer, nullable=True)
+    fk_idtipo = Column(Integer, nullable=True)
+    fk_idpuesto = Column(Integer, nullable=True)
+    revoke_session = Column(Integer, nullable=True)
+    estado = Column(Integer, nullable=False)
+    token = Column(String(300), nullable=True)
+    idusuario_viejo = Column(Integer, nullable=True)
+    sueldo_diario = Column(Numeric(10, 2), nullable=True)
+    recibir_nomina_email = Column(Integer, nullable=False)
+
+
+######################## MODELOS DE LA BASE DE DATOS PRINCIPAL ########################
 class Messages(Base):
     __tablename__ = "messages"
 

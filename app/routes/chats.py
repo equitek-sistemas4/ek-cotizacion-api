@@ -16,7 +16,7 @@ from app.crud.messages import (
     chat_send_and_save_text_message,
 )
 from app.crud.contacts import get_contact_by_id
-from app.database import get_db
+from app.database import get_db, get_db_vmaps
 from app.schemas.chat_messages import serialize_chat_message
 from app.services.whatsapp import WhatsAppService
 from app.utils.utils import create_access_token, serialize_message
@@ -97,6 +97,7 @@ async def get_chat_messages_route(
     chat_id: int,
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    db_vmaps: Session = Depends(get_db_vmaps),
 ):
     chat = get_chat_by_id(db, chat_id)
     if chat is None:
@@ -105,7 +106,7 @@ async def get_chat_messages_route(
             "message": "Chat no encontrado",
         }
 
-    messages = get_messages(db, chat_id, limit)
+    messages = get_messages(db, db_vmaps, chat_id, limit)
     return {
         "success": True,
         "data": {

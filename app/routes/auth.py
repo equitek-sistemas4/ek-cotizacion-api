@@ -1,53 +1,80 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Form
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.crud.chats import get_chat_by_id
 from app.crud.chats_members import get_chat_member, update_token_member_chat
 from app.crud.contacts import get_contact_by_id
-from app.crud.users import get_user_by_email, validate_user_password
-from app.database import get_db
-from app.routes.users import serialize_user
+from app.crud.users import get_user_by_email, get_user_by_username_vmaps, validate_user_password_vmaps
+from app.database import get_db, get_db_vmaps
 from app.utils.utils import create_access_token, validate_access_token
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def serialize_vmaps_user(user) -> dict:
+    return {
+        "id": user.idusuario,
+        "username": user.usuario,
+        "name": " ".join(
+            part for part in (user.nombres, user.apellido_paterno, user.apellido_materno) if part
+        ),
+        "email": user.correo,
+        "status": user.estado,
+    }
+
+
 @router.post("/login")
 async def login_route(
     email: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_vmaps),
 ):
-    user = get_user_by_email(db, email=email.strip())
-    if user is None:
+    try:
+        user = get_user_by_username_vmaps(db, username=email.strip())
+        if user is None:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "El usuario no existe",
+                },
+            )
+
+        if not validate_user_password_vmaps(user, password.strip()):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "message": "Contraseña incorrecta",
+                },
+            )
+
+        access_token = create_access_token({
+            "sub": str(user.idusuario),
+            "email": user.correo,
+        })
+
         return {
-            "success": False,
-            "message": "El email no existe",
+            "success": True,
+            "message": "Login correcto",
+            "data": {
+                "user": serialize_vmaps_user(user),
+                "access_token": access_token,
+                "token_type": "bearer",
+            },
         }
-
-    if not validate_user_password(user, password.strip()):
-        return {
-            "success": False,
-            "message": "Password incorrecto",
-        }
-
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "email": user.email,
-    })
-
-    return {
-        "success": True,
-        "message": "Login correcto",
-        "data": {
-            "user": serialize_user(user),
-            "access_token": access_token,
-            "token_type": "bearer",
-        },
-    }
+    except Exception as error:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "message": str(error),
+            },
+        )
 
 
 @router.post("/logout")

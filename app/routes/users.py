@@ -3,8 +3,8 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
 
-from app.crud.users import create_user, delete_user, update_user, get_all_users
-from app.database import get_db
+from app.crud.users import create_user, delete_user, get_all_users_vmaps, update_user, get_all_users
+from app.database import get_db, get_db_vmaps
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -20,18 +20,19 @@ def validate_required_fields(fields: Dict[str, str]) -> Optional[str]:
 
 def serialize_user(user) -> dict:
     return {
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "phone_number": user.phone_number,
-        "status": user.status,
-        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "id": user.idusuario,
+        "usuario": user.usuario,
+        "name": user.nombres,
+        "email": user.correo,
+        "phone_number": '',
+        "status": user.estado,
+        "created_at": user.fecha_registro.isoformat() if user.fecha_registro else None,
     }
 
 
 @router.get("/list")
-async def get_all_users_route(db: Session = Depends(get_db)):
-    users = get_all_users(db)
+async def get_all_users_route(db_vmaps: Session = Depends(get_db_vmaps)):
+    users = get_all_users_vmaps(db_vmaps)
     return {
         "success": True,
         "data": [serialize_user(user) for user in users]

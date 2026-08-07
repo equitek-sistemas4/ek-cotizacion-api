@@ -58,3 +58,29 @@ def get_db_quote():
         yield db
     finally:
         db.close()
+
+
+########################## BASE DE DATOS DE VMAPS3 ##########################
+if settings.mysql_host_vmaps == "localhost" or settings.mysql_host_vmaps == "127.0.0.1":
+    DATABASE_URL_VMAPS = (
+        f"mysql+pymysql://{settings.mysql_user_vmaps}:{settings.mysql_password_vmaps}"
+        f"@/{settings.mysql_database_vmaps}?unix_socket=/var/run/mysqld/mysqld.sock&charset=utf8mb4"
+    )
+else:
+    DATABASE_URL_VMAPS = (
+        f"mysql+pymysql://{settings.mysql_user_vmaps}:{settings.mysql_password_vmaps}"
+        f"@{settings.mysql_host_vmaps}:{settings.mysql_port_vmaps}/{settings.mysql_database_vmaps}?charset=utf8mb4"
+    )
+
+
+engine_vmaps = create_engine(DATABASE_URL_VMAPS, pool_pre_ping=True)
+SessionLocal_vmaps = sessionmaker(autocommit=False, autoflush=False, bind=engine_vmaps)
+Base_vmaps = declarative_base()
+
+
+def get_db_vmaps():
+    db = SessionLocal_vmaps()
+    try:
+        yield db
+    finally:
+        db.close()

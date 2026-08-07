@@ -1,8 +1,10 @@
+import hashlib
+import hmac
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Users
+from app.models import Users, Usuarios
 from app.utils.utils import hash_password
 
 
@@ -12,6 +14,10 @@ def clean_user_phone_number(phone_number: str) -> str:
 
 def get_all_users(db: Session) -> List[Users]:
     return db.query(Users).order_by(Users.created_at.desc()).all()
+
+
+def get_all_users_vmaps(db_vmaps: Session) -> List[Usuarios]:
+    return db_vmaps.query(Usuarios).filter(Usuarios.estado == 1).order_by(Usuarios.fecha_registro.desc()).all()
 
 
 def create_user(
@@ -52,12 +58,21 @@ def get_user_by_email(db: Session, email: str) -> Optional[Users]:
     return db.query(Users).filter(Users.email == email).first()
 
 
+def get_user_by_username_vmaps(db_vmaps: Session, username: str) -> Optional[Usuarios]:
+    return db_vmaps.query(Usuarios).filter(Usuarios.usuario == username).first()
+
+
 def validate_user_password(user: Users, password: str) -> bool:
     return user.password == hash_password(password)
 
 
-def get_user_by_id(db: Session, user_id: int) -> Optional[Users]:
-    return db.query(Users).filter(Users.id == user_id).first()
+def validate_user_password_vmaps(user: Usuarios, password: str) -> bool:
+    password_hash = hashlib.md5(password.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(user.contrasena or "", password_hash)
+
+
+def get_user_by_id(db: Session, user_id: int) -> Optional[Usuarios]:
+    return db.query(Usuarios).filter(Usuarios.idusuario == user_id).first()
 
 
 def update_user(

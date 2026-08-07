@@ -7,7 +7,7 @@ from app.crud.chats import get_chat_by_id
 from app.crud.chats_messages import create_chat_message
 from app.crud.contacts import get_contact_by_id
 from app.crud.users import get_user_by_id
-from app.database import SessionLocal
+from app.database import SessionLocal, SessionLocal_vmaps
 from app.schemas.chat_messages import serialize_chat_message
 from app.utils.utils import decode_access_token
 
@@ -57,11 +57,11 @@ def get_sender_from_token(payload: dict, chat_id: int) -> Tuple[int, str]:
     return int(payload["sub"]), "user"
 
 
-def get_sender(db: Session, sender_id: int, sender_type: str):
+def get_sender(db: Session, db_vmaps: Session, sender_id: int, sender_type: str):
     if sender_type == "contact":
         return get_contact_by_id(db, sender_id), None
 
-    return None, get_user_by_id(db, sender_id)
+    return None, get_user_by_id(db_vmaps, sender_id)
 
 
 @router.websocket("/{chat_id}/ws")
@@ -81,13 +81,14 @@ async def chat_websocket(websocket: WebSocket, chat_id: int, token: Optional[str
         return
 
     db = SessionLocal()
+    db_vmaps = SessionLocal_vmaps()
     try:
         chat = get_chat_by_id(db, chat_id)
         if chat is None:
             await websocket.close(code=1008, reason="Chat no encontrado")
             return
 
-        contact, user = get_sender(db, sender_id, sender_type)
+        contact, user = get_sender(db, db_vmaps, sender_id, sender_type)
         if sender_type == "contact" and contact is None:
             await websocket.close(code=1008, reason="Contacto no encontrado")
             return
@@ -144,3 +145,4 @@ async def chat_websocket(websocket: WebSocket, chat_id: int, token: Optional[str
         await websocket.close(code=1011, reason="Error interno")
     finally:
         db.close()
+        db_vmaps.close()
