@@ -3,7 +3,14 @@ from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import ChatMembers, Chats, Contact, Contact_requests
+from app.database import SessionLocal_quote
+from app.models import (
+    ChatMembers,
+    Chats,
+    Contact,
+    Contact_requests,
+    empresa_contacto,
+)
 from app.utils.utils import create_access_token, encrypt_token, generate_alphanumeric_code
 
 
@@ -44,6 +51,9 @@ def create_contact_request(
     contact_display_name: Optional[str] = None,
     contact_company: Optional[str] = None,
     contact_position: Optional[str] = None,
+    idempresa_contacto: Optional[int] = None,
+    fk_idempresa: Optional[int] = None,
+    contact_email: Optional[str] = None,
 ) -> Contact_requests:
     contact_request = Contact_requests(
         chat_id=chat_id,
@@ -52,6 +62,9 @@ def create_contact_request(
         contact_display_name=contact_display_name,
         contact_company=contact_company,
         contact_position=contact_position,
+        idempresa_contacto=idempresa_contacto,
+        fk_idempresa=fk_idempresa,
+        contact_email=contact_email
     )
     db.add(contact_request)
     db.commit()
@@ -145,6 +158,9 @@ def get_all_contact_requests(db: Session, status: str) -> List[Dict]:
             "contact_display_name": contact_request.contact_display_name,
             "contact_company": contact_request.contact_company,
             "contact_position": contact_request.contact_position,
+            "contact_email": contact_request.contact_email,
+            "idempresa_contacto": contact_request.idempresa_contacto,
+            "fk_idempresa": contact_request.fk_idempresa,
             "status": contact_request.status,
             "created_at": (
                 contact_request.created_at.isoformat()
@@ -183,7 +199,28 @@ def approve_contact_request(db: Session, contact_request_id: int) -> Dict:
     if chat is None:
         return {"approved": False, "reason": "chat_not_found"}
 
+    if not contact_request.fk_idempresa:
+        return {"approved": False, "reason": "missing_company"}
+
+    if not contact_request.contact_email:
+        return {"approved": False, "reason": "missing_email"}
+
+    db_quote = SessionLocal_quote()
     try:
+        company_contact = empresa_contacto(
+            nombre=contact_request.contact_name,
+            titulo=contact_request.contact_display_name,
+            funcion=contact_request.contact_position,
+            tel_movil=contact_request.contact_phone_number,
+            email=contact_request.contact_email,
+            fk_idempresa=contact_request.fk_idempresa,
+            contacto_estado=1,
+        )
+        db_quote.add(company_contact)
+        db_quote.flush()
+        idempresa_contacto = company_contact.idempresa_contacto
+        db_quote.commit()
+
         contact = (
             db.query(Contact)
             .filter(Contact.phone_number == contact_request.contact_phone_number)
@@ -196,9 +233,14 @@ def approve_contact_request(db: Session, contact_request_id: int) -> Dict:
                 display_name=contact_request.contact_display_name,
                 company=contact_request.contact_company,
                 position=contact_request.contact_position,
+                idempresa_contacto=idempresa_contacto,
+                fk_idempresa=contact_request.fk_idempresa,
             )
             db.add(contact)
             db.flush()
+        else:
+            contact.idempresa_contacto = idempresa_contacto
+            contact.fk_idempresa = contact_request.fk_idempresa
 
         chat_member = (
             db.query(ChatMembers)
@@ -227,13 +269,17 @@ def approve_contact_request(db: Session, contact_request_id: int) -> Dict:
             db.add(chat_member)
 
         contact_request.status = "approved"
+        contact_request.idempresa_contacto = idempresa_contacto
         db.commit()
         db.refresh(contact_request)
         db.refresh(contact)
         db.refresh(chat_member)
     except Exception:
         db.rollback()
+        db_quote.rollback()
         raise
+    finally:
+        db_quote.close()
 
     return {
         "approved": True,

@@ -931,6 +931,9 @@ class Contact_requests(Base):
     contact_display_name = Column(String(100), nullable=False)
     contact_company = Column(String(100), nullable=False)
     contact_position = Column(String(255), nullable=False)
+    idempresa_contacto = Column(Integer, nullable=True)
+    fk_idempresa = Column(Integer, nullable=True)
+    contact_email = Column(String(255), nullable=True)
     status = Column(Enum("pending", "approved", "rejected"), default="pending")
     created_at = Column(DateTime, default=datetime.now)
 

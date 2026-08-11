@@ -79,6 +79,16 @@ async def approve_contact_request_route(
             raise HTTPException(status_code=404, detail="Solicitud de contacto no encontrada")
         if reason == "chat_not_found":
             raise HTTPException(status_code=404, detail="Chat de la solicitud no encontrado")
+        if reason == "missing_company":
+            raise HTTPException(
+                status_code=422,
+                detail="La solicitud requiere fk_idempresa para crear el contacto",
+            )
+        if reason == "missing_email":
+            raise HTTPException(
+                status_code=422,
+                detail="La solicitud requiere contact_email para crear el contacto",
+            )
         raise HTTPException(
             status_code=409,
             detail="La solicitud ya fue procesada y no puede aprobarse",
@@ -94,6 +104,7 @@ async def approve_contact_request_route(
             "contact_request": {
                 "id": contact_request.id,
                 "chat_id": contact_request.chat_id,
+                "idempresa_contacto": contact_request.idempresa_contacto,
                 "status": contact_request.status,
             },
             "contact": serialize_contact(contact),
@@ -182,6 +193,9 @@ async def create_contact_request_route(
     contact_display_name: Optional[str] = Form(None),
     contact_company: Optional[str] = Form(None),
     contact_position: Optional[str] = Form(None),
+    idempresa_contacto: Optional[int] = Form(None),
+    fk_idempresa: Optional[int] = Form(None),
+    contact_email: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     contact_request = create_contact_request(
@@ -191,7 +205,10 @@ async def create_contact_request_route(
         contact_phone_number=contact_phone_number,
         contact_display_name=contact_display_name,
         contact_company=contact_company,
-        contact_position=contact_position
+        contact_position=contact_position,
+        idempresa_contacto=idempresa_contacto,
+        fk_idempresa=fk_idempresa,
+        contact_email=contact_email,
     )
 
     return {
@@ -204,6 +221,10 @@ async def create_contact_request_route(
             "contact_phone_number": contact_request.contact_phone_number,
             "contact_display_name": contact_request.contact_display_name,
             "contact_company": contact_request.contact_company,
+            "contact_position": contact_request.contact_position,
+            "contact_email": contact_request.contact_email,
+            "idempresa_contacto": contact_request.idempresa_contacto,
+            "fk_idempresa": contact_request.fk_idempresa,
             "created_at": contact_request.created_at.isoformat() if contact_request.created_at else None,
         },
     }
