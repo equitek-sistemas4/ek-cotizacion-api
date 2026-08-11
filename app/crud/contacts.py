@@ -18,13 +18,17 @@ def create_contact(
     display_name: Optional[str] = None,
     company: Optional[str] = None,
     position: Optional[str] = None,
+    idempresa_contacto: Optional[int] = None,
+    fk_idempresa: Optional[int] = None,
 ) -> Contact:
     contact = Contact(
         name=name,
         phone_number=clean_contact_phone_number(phone_number),
         display_name=display_name,
         company=company,
-        position=position
+        position=position,
+        idempresa_contacto=idempresa_contacto,
+        fk_idempresa=fk_idempresa
     )
     db.add(contact)
     db.commit()
@@ -84,6 +88,17 @@ def update_contact(
 
 def get_contact_by_id(db: Session, contact_id: int) -> Optional[Contact]:
     return db.query(Contact).filter(Contact.id == contact_id).first()
+
+
+def contact_exists_by_empresa_contacto_id(
+    db: Session,
+    idempresa_contacto: int,
+) -> Optional[Contact]:
+    return (
+        db.query(Contact)
+        .filter(Contact.idempresa_contacto == idempresa_contacto)
+        .first()
+    )
 
 
 def delete_contact(db: Session, contact_id: int):

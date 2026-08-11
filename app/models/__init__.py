@@ -877,6 +877,8 @@ class Contact(Base):
     company = Column(String(100), nullable=True)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
     position = Column(String(255), nullable=True)
+    idempresa_contacto = Column(Integer, nullable=True)
+    fk_idempresa = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
 

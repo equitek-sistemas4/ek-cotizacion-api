@@ -10,6 +10,7 @@ from app.crud.contacts import (
     create_contact_request,
     delete_contact,
     approve_contact_request,
+    contact_exists_by_empresa_contacto_id,
     reject_contact_request,
     get_all_contact_requests,
     get_all_contacts,
@@ -28,6 +29,9 @@ def serialize_contact(contact) -> dict:
         "phone_number": contact.phone_number,
         "display_name": contact.display_name,
         "company": contact.company,
+        "status": contact.status,
+        "position": contact.position,
+        "idempresa_contacto": contact.idempresa_contacto,
         "created_at": contact.created_at.isoformat() if contact.created_at else None,
     }
 
@@ -38,6 +42,19 @@ async def get_all_contacts_route(db: Session = Depends(get_db)):
     return {
         "success": True,
         "data": [serialize_contact(contact) for contact in contacts],
+    }
+
+
+@router.get("/exists/company-contact/{idempresa_contacto}")
+async def contact_exists_by_empresa_contacto_id_route(
+    idempresa_contacto: int,
+    db: Session = Depends(get_db),
+):
+    contact = contact_exists_by_empresa_contacto_id(db, idempresa_contacto)
+    return {
+        "success": True,
+        "exists": contact is not None,
+        "data": serialize_contact(contact) if contact else None,
     }
 
 
@@ -136,6 +153,8 @@ async def create_contact_route(
     phone_number: str = Form(...),
     display_name: Optional[str] = Form(None),
     company: Optional[str] = Form(None),
+    idempresa_contacto: Optional[int] = Form(None),
+    fk_idempresa: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     contact = create_contact(
@@ -144,6 +163,8 @@ async def create_contact_route(
         phone_number=phone_number,
         display_name=display_name,
         company=company,
+        idempresa_contacto=idempresa_contacto,
+        fk_idempresa=fk_idempresa
     )
 
     return {

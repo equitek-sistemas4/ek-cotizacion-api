@@ -261,6 +261,53 @@ def get_prospect_quotation_info(
     return dict(row) if row else None
 
 
+def get_quotation_company_contacts(
+    quotation_id: int,
+    db_quote: Session,
+) -> List[Dict[str, Any]]:
+    """Obtiene los contactos activos de la empresa asociada a una cotización."""
+    stmt = (
+        select(
+            empresa_contacto.titulo,
+            empresa_contacto.nombre,
+            empresa_contacto.funcion,
+            empresa_contacto.email,
+            empresa_contacto.tel_directo,
+            empresa_contacto.idempresa_contacto,
+            empresa_contacto.fk_idempresa,
+            empresa.empresa,
+            
+            case(
+                (
+                    ncrm_prospecto.fk_idempresa_contacto
+                    == empresa_contacto.idempresa_contacto,
+                    1,
+                ),
+                else_=0,
+            ).label("principal"),
+        )
+        .select_from(ncrm_coti)
+        .outerjoin(
+            ncrm_prospecto,
+            ncrm_coti.fk_idprospecto == ncrm_prospecto.idprospecto,
+        )
+        .outerjoin(
+            empresa_contacto,
+            ncrm_prospecto.fk_idempresa == empresa_contacto.fk_idempresa,
+        )
+        .outerjoin(
+            empresa, empresa.idempresa == empresa_contacto.fk_idempresa
+        )
+        .where(
+            empresa_contacto.contacto_estado == 1,
+            ncrm_coti.idcoti == quotation_id,
+        )
+        .order_by(empresa_contacto.nombre)
+    )
+
+    return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+
+
 def get_products_quotation_info(
     quotation_id: int,
     db_quote: Session,
