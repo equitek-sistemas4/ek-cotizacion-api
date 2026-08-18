@@ -1,8 +1,12 @@
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
 from sqlalchemy import Integer, case, cast, func, null, or_, select
 from sqlalchemy.orm import Session, aliased
 
+from app.config import settings
 from app.models import (
     ncrm_alcval,
     ncrm_alcvalequ,
@@ -49,6 +53,115 @@ from app.models import (
     ubicacion_pais,
     ubicacion_poblacion,
 )
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+configured_quotation_files_directory = Path(settings.quotation_files_directory)
+QUOTATION_FILES_DIRECTORY = (
+    configured_quotation_files_directory
+    if configured_quotation_files_directory.is_absolute()
+    else PROJECT_ROOT / configured_quotation_files_directory
+)
+MAX_QUOTATION_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+async def save_quotation_file(
+    quotation_id: int,
+    user_id: int,
+    fk_idprod: int,
+    file: Any,
+    db_quote: Session,
+) -> Dict[str, Any]:
+    quotation = db_quote.get(ncrm_coti, quotation_id)
+    if quotation is None:
+        raise ValueError("Cotizacion no encontrada")
+
+    original_name = Path(file.filename or "").name
+    if not original_name:
+        raise ValueError("El archivo debe tener un nombre valido")
+
+    extension = Path(original_name).suffix.lower()
+    stored_path = QUOTATION_FILES_DIRECTORY / f"{uuid4().hex}{extension}"
+    try:
+        database_path = stored_path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        database_path = stored_path.as_posix()
+    QUOTATION_FILES_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
+    try:
+        total_size = 0
+        with stored_path.open("wb") as destination:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > MAX_QUOTATION_FILE_SIZE:
+                    raise ValueError("El archivo excede el limite de 10 MB")
+                destination.write(chunk)
+
+        quotation_file = ncrm_arch(
+            archivo=database_path,
+            descripcion=original_name,
+            fk_idcoti=quotation_id,
+            fk_idusuario=user_id,
+            fk_idprod=fk_idprod,
+            fecha=datetime.now(),
+            estado=1,
+        )
+        db_quote.add(quotation_file)
+        db_quote.commit()
+        db_quote.refresh(quotation_file)
+    except Exception:
+        db_quote.rollback()
+        if stored_path.exists():
+            stored_path.unlink()
+        raise
+
+    return {
+        "idarch": quotation_file.idarch,
+        "archivo": quotation_file.archivo,
+        "descripcion": quotation_file.descripcion,
+        "fk_idcoti": quotation_file.fk_idcoti,
+        "fk_idusuario": quotation_file.fk_idusuario,
+    }
+
+
+def get_quotation_files(
+    quotation_id: int,
+    user_id: int,
+    db_quote: Session,
+) -> List[Dict[str, Any]]:
+    """Obtiene los archivos activos de una cotizacion cargados por un usuario."""
+    stmt = (
+        select(
+            ncrm_arch.idarch,
+            ncrm_arch.archivo,
+            ncrm_arch.descripcion,
+            ncrm_arch.fk_idcoti,
+            ncrm_arch.fk_idusuario,
+            ncrm_arch.fk_idprod,
+            ncrm_arch.fecha,
+        )
+        .where(
+            ncrm_arch.fk_idcoti == quotation_id,
+            ncrm_arch.fk_idusuario == user_id,
+            ncrm_arch.estado == 1,
+        )
+        .order_by(ncrm_arch.fecha.desc(), ncrm_arch.idarch.desc())
+    )
+
+    files = []
+    for row in db_quote.execute(stmt).mappings().all():
+        quotation_file = dict(row)
+        file_path = Path(quotation_file["archivo"])
+        if not file_path.is_absolute() and file_path.parts[:1] == ("uploads",):
+            quotation_file["url"] = f"/{file_path.as_posix()}"
+        else:
+            quotation_file["url"] = None
+        files.append(quotation_file)
+
+    return files
 
 
 def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[str, Any]]:

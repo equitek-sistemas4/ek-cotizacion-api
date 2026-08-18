@@ -32,6 +32,9 @@ class Settings:
 
     secret_key = os.getenv("SECRET_KEY")
     access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "600"))
+    quotation_files_directory = os.getenv(
+        "QUOTATION_FILES_DIRECTORY", "uploads/quotation_files"
+    )
     cors_origins = [
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "*").split(",")

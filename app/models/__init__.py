@@ -328,6 +328,7 @@ class ncrm_arch(Base_quote):
     descripcion = Column(String(1500), nullable=True)
     fk_idcoti = Column(Integer, nullable=True)
     fk_idusuario = Column(Integer, nullable=False)
+    fk_idprod = Column(Integer, nullable=True)
     fecha = Column(DateTime, nullable=False)
     estado = Column(Integer, nullable=True)
     eli = Column(String(45), nullable=True)

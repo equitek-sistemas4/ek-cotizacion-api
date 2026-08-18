@@ -1,16 +1,64 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db, get_db_quote
 from app.crud.chats import create_chat
 from app.crud.chats_members import add_member_to_chat
 from app.crud.contacts import get_contact_by_id
-from app.crud.quotations import get_conditions_quotation_info, get_costs_quotation_info, get_quotation_company_contacts, get_quotation_info, get_prospect_quotation_info, get_products_quotation_info, get_equipment_quotation_info, get_configured_equipment_scopes, get_equipment_scopes
+from app.crud.quotations import get_conditions_quotation_info, get_costs_quotation_info, get_quotation_company_contacts, get_quotation_files, get_quotation_info, get_prospect_quotation_info, get_products_quotation_info, get_equipment_quotation_info, get_configured_equipment_scopes, get_equipment_scopes, save_quotation_file
 
 
 router = APIRouter(prefix="/quotations", tags=["quotations"])
+
+
+@router.post("/upload-file", status_code=201)
+async def upload_quotation_file(
+    quotation_id: int = Form(...),
+    user_id: int = Form(...),
+    fk_idprod: int = Form(...),
+    file: UploadFile = File(...),
+    db_quote: Session = Depends(get_db_quote),
+):
+    try:
+        quotation_file = await save_quotation_file(
+            quotation_id=quotation_id,
+            user_id=user_id,
+            fk_idprod=fk_idprod,
+            file=file,
+            db_quote=db_quote,
+        )
+    except ValueError as error:
+        message = str(error)
+        status_code = 404 if message == "Cotizacion no encontrada" else 400
+        raise HTTPException(status_code=status_code, detail=message) from error
+    finally:
+        await file.close()
+
+    return {
+        "success": True,
+        "message": "Archivo de cotizacion guardado",
+        "data": quotation_file,
+    }
+
+
+@router.get("/files")
+async def get_quotation_files_route(
+    quotation_id: int,
+    user_id: int,
+    db_quote: Session = Depends(get_db_quote),
+):
+    files = get_quotation_files(
+        quotation_id=quotation_id,
+        user_id=user_id,
+        db_quote=db_quote,
+    )
+
+    return {
+        "success": True,
+        "data": files,
+    }
 
 
 @router.get("/{quotation_id}/info")
