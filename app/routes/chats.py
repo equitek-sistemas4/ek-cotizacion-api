@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.crud.chats import (
     create_chat as create_chat_db,
+    delete_chat as delete_chat_db,
     get_all_chats as get_all_chats_db,
     get_chat_by_id,
     get_chat_with_members as get_chat_with_members_db,
@@ -55,12 +56,13 @@ async def create_chat_route(
 
 @router.get("/list")
 async def get_all_chats_route(
+    search: Optional[str] = Query(None, min_length=1),
     limit: Optional[int] = Query(None, ge=1, le=1024),
     after: Optional[str] = Query(None),
     before: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    chats = get_all_chats_db(db)
+    chats = get_all_chats_db(db, search=search)
     return {
         "success": True,
         "data": [
@@ -89,6 +91,18 @@ async def get_chat_with_members_route(chat_id: int, db: Session = Depends(get_db
     return {
         "success": True,
         "data": chat,
+    }
+
+
+@router.delete("/{chat_id}")
+async def delete_chat_route(chat_id: int, db: Session = Depends(get_db)):
+    deleted = delete_chat_db(db, chat_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Chat no encontrado")
+
+    return {
+        "success": True,
+        "message": "Chat eliminado",
     }
 
 

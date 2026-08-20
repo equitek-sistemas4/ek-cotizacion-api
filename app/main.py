@@ -11,6 +11,7 @@ from app import models
 from app.routes.contacts import router as contacts_router
 from app.routes.whatsapp import router as whatsapp_router
 from app.routes.chats import router as chats_router
+from app.routes.chats_whatsapp import router as chats_whatsapp_router
 from app.routes.users import router as users_router
 from app.routes.auth import router as auth_router
 from app.routes.chat_messages import router as chat_messages_router
@@ -48,6 +49,7 @@ app.add_middleware(
 app.include_router(whatsapp_router)
 app.include_router(chat_websocket_router)
 app.include_router(chats_router, dependencies=[Depends(validate_access_token)])
+app.include_router(chats_whatsapp_router, dependencies=[Depends(validate_access_token)])
 app.include_router(chat_messages_router, dependencies=[Depends(validate_access_token)])
 app.include_router(chat_files_router, dependencies=[Depends(validate_access_token)])
 app.include_router(contacts_router, dependencies=[Depends(validate_access_token)])

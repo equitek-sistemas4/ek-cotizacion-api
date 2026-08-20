@@ -384,7 +384,7 @@ def get_received_messages(
     phone_number: Optional[str] = None,
     limit: int = 100,
 ) -> List[Messages]:
-    query = db.query(Messages).filter(Messages.direction == "incoming")
+    query = db.query(Messages)
 
     if phone_number:
         query = query.filter(
@@ -393,7 +393,7 @@ def get_received_messages(
 
     return (
         query
-        .order_by(Messages.created_at.desc())
+        .order_by(Messages.created_at.asc())
         .limit(limit)
         .all()
     )

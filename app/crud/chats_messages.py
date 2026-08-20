@@ -62,6 +62,23 @@ def get_messages(
     ]
 
 
+def search_chat_messages(
+    db: Session,
+    chat_id: int,
+    search: str,
+) -> List[ChatMessages]:
+    search_term = f"%{search.strip()}%"
+    return (
+        db.query(ChatMessages)
+        .filter(
+            ChatMessages.chat_id == chat_id,
+            ChatMessages.text.ilike(search_term),
+        )
+        .order_by(ChatMessages.created_at.asc())
+        .all()
+    )
+
+
 def serialize_chat_message(
     message: ChatMessages,
     contact: Optional[Contact] = None,

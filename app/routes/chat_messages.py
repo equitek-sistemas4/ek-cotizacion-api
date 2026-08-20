@@ -3,12 +3,12 @@ from typing import Optional
 from uuid import uuid4
 
 from app.database import get_db, get_db_vmaps
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 
 from app.crud.chats import get_chat_by_id
-from app.crud.chats_messages import get_messages
+from app.crud.chats_messages import get_messages, search_chat_messages
 from app.crud.contacts import get_contact_by_id
 from app.crud.users import get_user_by_id
 from app.models import ChatFiles, ChatMessages
@@ -172,4 +172,27 @@ async def get_chat_messages_route(
             serialize_chat_message(message, contact, user)
             for message, contact, user in chats
         ]
+    }
+
+
+@router.get("/{chat_id}/search")
+async def search_chat_messages_route(
+    chat_id: int,
+    search: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+):
+    messages = search_chat_messages(db, chat_id, search)
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": message.id,
+                "chat_id": message.chat_id,
+                "sender_id": message.sender_id,
+                "sender_type": message.sender_type,
+                "text": message.text,
+                "created_at": message.created_at.isoformat() if message.created_at else None,
+            }
+            for message in messages
+        ],
     }

@@ -831,6 +831,16 @@ class Chats(Base):
     created_at = Column(DateTime, default=datetime.now)
 
 
+class Chats_Whatsapp(Base):
+    __tablename__ = "chats_whatsapp"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)
+    contact_id = Column(Integer, nullable=True)
+    status = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.now)
+
+
 class ChatMembers(Base):
     __tablename__ = "chat_members"
 

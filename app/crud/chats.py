@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models import Chats, ChatMembers, Contact
@@ -48,23 +49,29 @@ def delete_chat(db: Session, chat_id: int) -> bool:
     else:
         chat.status = 0;
 
-    db.query(ChatMembers).filter(ChatMembers.chat_id == chat_id).delete(
-        synchronize_session=False
+    db.query(ChatMembers).filter(ChatMembers.chat_id == chat_id).update(
+        {ChatMembers.status: 0},
+        synchronize_session=False,
     )
-
-    chat_members = db.query(ChatMembers).filters(ChatMembers.chat_id == chat_id)
-    for member in chat_members:
-        member.status = 0
-        db.commit()
-        db.refresh(member)
 
     db.commit()
     db.refresh(chat)
     return True
 
 
-def get_all_chats(db: Session) -> List[Chats]:
-    return db.query(Chats).order_by(Chats.created_at.desc()).all()
+def get_all_chats(db: Session, search: Optional[str] = None) -> List[Chats]:
+    query = db.query(Chats).filter(Chats.status == 1)
+
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                Chats.name.ilike(search_term),
+                Chats.description.ilike(search_term),
+            )
+        )
+
+    return query.order_by(Chats.created_at.desc()).all()
 
 
 def get_chat_with_members(db: Session, chat_id: int) -> Optional[Dict]:
