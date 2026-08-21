@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.whatsapp import WhatsAppTemplateRequestSimple, WhatsAppTemplateRequest
 from app.services.whatsapp import WhatsAppService
+from app.routes.chat_websocket import whatsapp_manager
 from app.database import get_db
 from app.crud.messages import (
     forward_incoming_message_to_chat_members,
@@ -18,6 +19,7 @@ from app.crud.messages import (
 from app.utils.utils import (
     build_incoming_message,
     serialize_message,
+    validate_access_token,
 )
 
 
@@ -32,8 +34,10 @@ async def send_whatsapp_message(
     to: str = Form(...),
     text: str = Form(...),
     db: Session = Depends(get_db),
+    _: dict = Depends(validate_access_token),
 ):
     result, message = await send_and_save_text_message(db, service, to, text)
+    await whatsapp_manager.broadcast_message(serialize_message(message))
 
     return {
         "success": True,
@@ -118,6 +122,7 @@ async def receive_webhook(
     forwarded_messages = 0
     forwarded_results = []
     failed_forwards = 0
+    incoming_messages = []
 
     try:
         for entry in payload.get("entry", []):
@@ -136,6 +141,7 @@ async def receive_webhook(
                     db.flush()
                     saved_message_ids.append(incoming_message.id)
                     saved_messages += 1
+                    incoming_messages.append(serialize_message(incoming_message))
 
                     forward_result = await forward_incoming_message_to_chat_members(
                         db,
@@ -158,6 +164,9 @@ async def receive_webhook(
                     })
 
         db.commit()
+
+        for incoming_message in incoming_messages:
+            await whatsapp_manager.broadcast_message(incoming_message)
 
         logger.warning(
             "Webhook WhatsApp POST recibido: entries=%s messages=%s statuses=%s saved=%s ids=%s forwarded=%s failed_forwards=%s",
@@ -190,6 +199,7 @@ async def get_received_messages(
     phone_number: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    _: dict = Depends(validate_access_token),
 ):
     messages = get_received_messages_from_db(db, phone_number, limit)
     return {
@@ -201,6 +211,7 @@ async def get_received_messages(
 @router.get("/messages")
 async def get_all_messages(
     db: Session = Depends(get_db),
+    _: dict = Depends(validate_access_token),
 ):
     messages = getAllMessages(db)
 

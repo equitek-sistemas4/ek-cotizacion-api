@@ -9,7 +9,7 @@ from app.crud.contacts import get_contact_by_id
 from app.crud.users import get_user_by_id
 from app.database import SessionLocal, SessionLocal_vmaps
 from app.schemas.chat_messages import serialize_chat_message
-from app.utils.utils import decode_access_token
+from app.utils.utils import decode_access_token, normalize_phone_number
 
 
 router = APIRouter(prefix="/chats", tags=["chat_websocket"])
@@ -44,6 +44,85 @@ class ChatConnectionManager:
 
 
 manager = ChatConnectionManager()
+
+
+class WhatsAppConnectionManager:
+    def __init__(self):
+        self.active_connections: List[Tuple[WebSocket, Optional[str]]] = []
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        phone_number: Optional[str] = None,
+    ):
+        await websocket.accept()
+        self.active_connections.append((websocket, phone_number))
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections = [
+            connection
+            for connection in self.active_connections
+            if connection[0] is not websocket
+        ]
+
+    async def broadcast_message(self, message: dict):
+        disconnected = []
+        for connection, phone_number in self.active_connections:
+            if phone_number and phone_number != message["phone_number"]:
+                continue
+
+            try:
+                await connection.send_json({
+                    "type": "whatsapp_message",
+                    "data": message,
+                })
+            except RuntimeError:
+                disconnected.append(connection)
+
+        for connection in disconnected:
+            self.disconnect(connection)
+
+
+whatsapp_manager = WhatsAppConnectionManager()
+
+
+@router.websocket("/whatsapp/ws")
+async def whatsapp_messages_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = None,
+    phone_number: Optional[str] = None,
+):
+    if not token:
+        await websocket.close(code=1008, reason="Token requerido")
+        return
+
+    try:
+        decode_access_token(token)
+    except HTTPException as exc:
+        await websocket.close(code=1008, reason=str(exc.detail))
+        return
+    except Exception:
+        await websocket.close(code=1008, reason="Token invalido")
+        return
+
+    normalized_phone_number = (
+        normalize_phone_number(phone_number) if phone_number else None
+    )
+
+    await whatsapp_manager.connect(websocket, normalized_phone_number)
+    await websocket.send_json({
+        "type": "connected",
+        "data": {"phone_number": normalized_phone_number},
+    })
+
+    try:
+        while True:
+            await websocket.receive()
+    except WebSocketDisconnect:
+        whatsapp_manager.disconnect(websocket)
+    except Exception:
+        whatsapp_manager.disconnect(websocket)
+        await websocket.close(code=1011, reason="Error interno")
 
 
 def get_sender_from_token(payload: dict, chat_id: int) -> Tuple[int, str]:
