@@ -957,3 +957,16 @@ class Notifications(Base):
     section = Column(String(100), nullable=False)
     status = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.now)
+
+
+class QuotationEvent(Base):
+    __tablename__ = "quotation_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quotation_id = Column(Integer, nullable=False)
+    contact_id = Column(Integer, nullable=False)
+    event_name = Column(String(100), nullable=False)
+    section_key = Column(String(100), nullable=True)
+    element_key = Column(String(150), nullable=True)
+    status = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.now)

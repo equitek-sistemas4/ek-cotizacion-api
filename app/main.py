@@ -21,6 +21,7 @@ from app.routes.quotations import router as quotations_router
 from app.routes.chat_members import router as chat_members_router
 from app.routes.roles import router as roles_router
 from app.routes.notifications import router as notifications_router
+from app.routes.quotation_events import router as quotation_events_router
 from app.utils.utils import validate_access_token
 
 
@@ -56,6 +57,7 @@ app.include_router(contacts_router, dependencies=[Depends(validate_access_token)
 app.include_router(users_router, dependencies=[Depends(validate_access_token)])
 app.include_router(roles_router, dependencies=[Depends(validate_access_token)])
 app.include_router(notifications_router, dependencies=[Depends(validate_access_token)])
+app.include_router(quotation_events_router, dependencies=[Depends(validate_access_token)])
 app.include_router(quotations_router, dependencies=[Depends(validate_access_token)])
 app.include_router(chat_members_router)
 app.include_router(auth_router)
