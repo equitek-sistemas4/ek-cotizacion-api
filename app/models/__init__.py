@@ -769,6 +769,14 @@ class ncrmp_producto(Base_quote):
 
 
 ######################## MODELOS DE LA BASE DE DATOS VMAPS3 ########################
+class monedas(Base_vmaps):
+    __tablename__ = "monedas"
+    __table_args__ = {"schema": "vmaps3_pruebas"}
+
+    idmoneda = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(20), nullable=True)
+
+
 class Usuarios(Base_vmaps):
     __tablename__ = "usuarios"
 

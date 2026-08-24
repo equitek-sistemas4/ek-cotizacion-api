@@ -52,6 +52,7 @@ from app.models import (
     ubicacion_estados,
     ubicacion_pais,
     ubicacion_poblacion,
+    monedas,
 )
 
 
@@ -249,6 +250,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
             ncrm_coti.seguimiento,
             ncrm_coti.fk_idiva,
             ncrm_coti.fk_idmoneda,
+            monedas.codigo.label("moneda_codigo"),
             ncrm_coti.descuento,
             ncrm_coti.tc,
             ncrm_coti.costo,
@@ -282,6 +284,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
         .outerjoin(ncrm_prospecto, ncrm_prospecto.idprospecto == ncrm_coti.fk_idprospecto)
         .outerjoin(empresa, empresa.idempresa == ncrm_prospecto.fk_idempresa)
         .outerjoin(iva, iva.idiva == ncrm_coti.fk_idiva)
+        .outerjoin(monedas, monedas.idmoneda == ncrm_coti.fk_idmoneda)
         .outerjoin(latest_requirement, latest_requirement.c.idcoti == ncrm_coti.idcoti)
         .outerjoin(ncrm_req_est, ncrm_req_est.idest == latest_requirement.c.idest)
         .outerjoin(ncrm_req_ests, ncrm_req_ests.idests == ncrm_req_est.fk_idests)
