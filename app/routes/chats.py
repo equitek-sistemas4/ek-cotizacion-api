@@ -57,12 +57,13 @@ async def create_chat_route(
 @router.get("/list")
 async def get_all_chats_route(
     search: Optional[str] = Query(None, min_length=1),
+    user_id: Optional[int] = Query(None),
     limit: Optional[int] = Query(None, ge=1, le=1024),
     after: Optional[str] = Query(None),
     before: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    chats = get_all_chats_db(db, search=search)
+    chats = get_all_chats_db(db, user_id=user_id, search=search)
     return {
         "success": True,
         "data": [

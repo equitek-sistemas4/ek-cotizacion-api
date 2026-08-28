@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.crud.chats_whatsapp import (
@@ -42,10 +42,11 @@ def create_chat_whatsapp_route(
 
 @router.get("/list")
 def get_all_chats_whatsapp_route(
+    user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     db_vmaps: Session = Depends(get_db_vmaps),
 ):
-    chats = get_all_chats_whatsapp_db(db, db_vmaps)
+    chats = get_all_chats_whatsapp_db(db, db_vmaps, user_id=user_id)
     return {
         "success": True,
         "data": chats,

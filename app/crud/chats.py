@@ -59,8 +59,8 @@ def delete_chat(db: Session, chat_id: int) -> bool:
     return True
 
 
-def get_all_chats(db: Session, search: Optional[str] = None) -> List[Chats]:
-    query = db.query(Chats).filter(Chats.status == 1)
+def get_all_chats(db: Session, user_id: Optional[int] = None, search: Optional[str] = None) -> List[Chats]:
+    query = db.query(Chats).filter(Chats.status == 1, Chats.user_id == user_id)
 
     if search and search.strip():
         search_term = f"%{search.strip()}%"
