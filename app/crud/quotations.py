@@ -242,6 +242,15 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
         .subquery()
     )
 
+    cotiext_costs = (
+        select(
+            ncrm_cotiext.fk_idcoti.label("idcoti"),
+            func.sum(ncrm_cotiext.costoe).label("total_costoe"),
+        )
+        .group_by(ncrm_cotiext.fk_idcoti)
+        .subquery()
+    )
+
     stmt = (
         select(
             ncrm_coti.idcoti,
@@ -278,6 +287,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
             func.coalesce(scope_counts.c.alcances, 0).label("alcances"),
             project_summary.c.proyectos,
             func.coalesce(project_summary.c.total_proyectos, 0).label("total_proyectos"),
+            func.coalesce(cotiext_costs.c.total_costoe, 0).label("extras"),
         )
         .outerjoin(usuarios, usuarios.idusuario == ncrm_coti.vendedor)
         .outerjoin(usuario_personal, usuario_personal.id_personal == usuarios.fk_idpersonal)
@@ -298,6 +308,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
         .outerjoin(note_counts, note_counts.c.idcoti == ncrm_coti.idcoti)
         .outerjoin(scope_counts, scope_counts.c.idcoti == ncrm_coti.idcoti)
         .outerjoin(project_summary, project_summary.c.idcoti == ncrm_coti.idcoti)
+        .outerjoin(cotiext_costs, cotiext_costs.c.idcoti == ncrm_coti.idcoti)
         .where(ncrm_coti.idcoti == quotation_id)
         .order_by(ncrm_coment.fecha_seg.desc(), ncrm_coti.idcoti.asc())
     )
