@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Users, Usuarios
+from app.models import Users, Usuarios, Usuarios_tipos
 from app.utils.utils import hash_password
 
 
@@ -59,7 +59,24 @@ def get_user_by_email(db: Session, email: str) -> Optional[Users]:
 
 
 def get_user_by_username_vmaps(db_vmaps: Session, username: str) -> Optional[Usuarios]:
-    return db_vmaps.query(Usuarios).filter(Usuarios.usuario == username).first()
+    result = (
+        db_vmaps.query(
+            Usuarios,
+            Usuarios_tipos.idtipo.label("idtipo"),
+            Usuarios_tipos.tipo.label("tipo"),
+        )
+        .join(Usuarios_tipos, Usuarios.fk_idtipo == Usuarios_tipos.idtipo)
+        .filter(Usuarios.usuario == username)
+        .first()
+    )
+
+    if result is None:
+        return None
+
+    user, idtipo, tipo = result
+    user.idtipo = idtipo
+    user.tipo = tipo
+    return user
 
 
 def validate_user_password(user: Users, password: str) -> bool:

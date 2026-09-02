@@ -31,6 +31,7 @@ class Settings:
     mysql_database_vmaps = os.getenv("MYSQL_DATABASE_VMAPS")
 
     secret_key = os.getenv("SECRET_KEY")
+    internal_chat_api_key = os.getenv("INTERNAL_CHAT_API_KEY")
     access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "600"))
     quotation_files_directory = os.getenv(
         "QUOTATION_FILES_DIRECTORY", "uploads/quotation_files"

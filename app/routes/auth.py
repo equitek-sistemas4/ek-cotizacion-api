@@ -24,6 +24,8 @@ def serialize_vmaps_user(user) -> dict:
         ),
         "email": user.correo,
         "status": user.estado,
+        "idtipo_usuario": user.idtipo,
+        "tipo_usuario": user.tipo,
     }
 
 

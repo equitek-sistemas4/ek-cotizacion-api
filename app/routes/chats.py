@@ -1,6 +1,7 @@
+import hmac
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.crud.chats import (
@@ -16,16 +17,40 @@ from app.crud.messages import (
     get_chat_messages as get_chat_messages_from_db,
     chat_send_and_save_text_message,
 )
-from app.crud.contacts import get_contact_by_id
-from app.database import get_db, get_db_vmaps
+from app.crud.contacts import (
+    contact_exists_by_empresa_contacto_id,
+    create_contact,
+    get_contact_by_id,
+)
+from app.config import settings
+from app.database import get_db, get_db_quote, get_db_vmaps
+from app.models import empresa_contacto
 from app.schemas.chat_messages import serialize_chat_message
 from app.services.whatsapp import WhatsAppService
 from app.utils.utils import create_access_token, serialize_message
 
 
 router = APIRouter(prefix="/chats", tags=["chats"])
+internal_router = APIRouter(prefix="/chats", tags=["chats"])
 service = WhatsAppService()
 DEFAULT_CHAT_MEMBER_CONTACT_ID = 1
+
+
+def validate_internal_chat_api_key(
+    x_internal_api_key: Optional[str] = Header(None, alias="X-Internal-Api-Key"),
+) -> None:
+    expected_api_key = settings.internal_chat_api_key
+    if not expected_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="La clave interna del endpoint no esta configurada",
+        )
+
+    if not x_internal_api_key or not hmac.compare_digest(
+        x_internal_api_key.encode("utf-8"),
+        expected_api_key.encode("utf-8"),
+    ):
+        raise HTTPException(status_code=401, detail="API key interna invalida")
 
 
 @router.post("/create")
@@ -51,6 +76,68 @@ async def create_chat_route(
             "name": chat.name,
             "description": chat.description,
         }
+    }
+
+
+@internal_router.post("/create-from-quotation", status_code=201)
+async def create_chat_from_quotation_route(
+    quotation_id: int = Form(...),
+    user_id: int = Form(...),
+    idempresa_contacto: int = Form(...),
+    chat_name: str = Form(...),
+    chat_description: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    db_quote: Session = Depends(get_db_quote),
+    _api_key: None = Depends(validate_internal_chat_api_key),
+):
+    contact = contact_exists_by_empresa_contacto_id(db, idempresa_contacto)
+
+    if contact is None:
+        company_contact = (
+            db_quote.query(empresa_contacto)
+            .filter(empresa_contacto.idempresa_contacto == idempresa_contacto)
+            .first()
+        )
+        if company_contact is None:
+            raise HTTPException(status_code=404, detail="Contacto de empresa no encontrado")
+
+        phone_number = company_contact.tel_movil or company_contact.tel_directo
+        if not phone_number:
+            raise HTTPException(
+                status_code=422,
+                detail="El contacto de empresa no tiene un telefono registrado",
+            )
+
+        contact = create_contact(
+            db,
+            name=company_contact.nombre,
+            phone_number=phone_number,
+            display_name=company_contact.titulo,
+            position=company_contact.funcion,
+            idempresa_contacto=company_contact.idempresa_contacto,
+            fk_idempresa=company_contact.fk_idempresa,
+        )
+
+    chat = create_chat_db(
+        db,
+        name=chat_name,
+        description=chat_description,
+        user_id=user_id,
+        quotation_id=quotation_id,
+    )
+    members = add_member_to_chat(db, chat.id, [contact.id])
+    member = members[0] if members else None
+
+    return {
+        "success": True,
+        "message": "Chat creado y contacto agregado",
+        "data": {
+            "chat_id": chat.id,
+            "contact_id": contact.id,
+            "idempresa_contacto": contact.idempresa_contacto,
+            "access_code": member.access_code if member else None,
+            "token_type": "bearer",
+        },
     }
 
 

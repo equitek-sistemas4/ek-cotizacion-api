@@ -35,7 +35,7 @@ def get_all_chats_whatsapp(db: Session, db_vmaps: Session, user_id: Optional[int
     rows = (
         db.query(Chats_Whatsapp, Contact)
         .outerjoin(Contact, Chats_Whatsapp.contact_id == Contact.id)
-        .filter(Chats_Whatsapp.status == 1, Chats_Whatsapp.user_id == user_id)
+        .filter(Chats_Whatsapp.status == 1, Chats_Whatsapp.user_id == user_id) if user_id is not None else db.query(Chats_Whatsapp, Contact).outerjoin(Contact, Chats_Whatsapp.contact_id == Contact.id).filter(Chats_Whatsapp.status == 1)
         .order_by(Chats_Whatsapp.created_at.desc())
         .all()
     )

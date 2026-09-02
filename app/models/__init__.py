@@ -814,6 +814,33 @@ class Usuarios(Base_vmaps):
     recibir_nomina_email = Column(Integer, nullable=False)
 
 
+class Usuarios_tipos(Base_vmaps):
+    __tablename__ = "usuarios_tipos"
+
+    idtipo = Column(Integer, primary_key=True, index=True)
+    tipo = Column(String(45), nullable=True)
+    fk_idcentrocosto_tipo = Column(Integer, nullable=True)
+    estado = Column(Integer, nullable=False)
+    permisos_base_permitido = Column(Text, nullable=True)
+    permisos_base_denegado = Column(Text, nullable=True)
+    ruta_default = Column(String(45), nullable=True)
+    hora_entrada = Column(DateTime, nullable=True)
+    hora_salida = Column(DateTime, nullable=True)
+
+
+class Usuarios_puestos(Base_vmaps):
+    __tablename__ = "usuarios_puestos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    description = Column(String(50), nullable=False)
+    parent = Column(Integer, nullable=False)
+    idDepartamento = Column(Integer, nullable=True)
+    idusuario = Column(Integer, nullable=True)
+    level = Column(Integer, nullable=True)
+    estado = Column(Integer, nullable=True)
+
+
 ######################## MODELOS DE LA BASE DE DATOS PRINCIPAL ########################
 class Messages(Base):
     __tablename__ = "messages"

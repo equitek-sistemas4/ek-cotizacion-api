@@ -512,6 +512,27 @@ def get_costs_quotation_info(
     return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
 
 
+def get_quotation_extras(
+    quotation_id: int,
+    db_quote: Session,
+) -> List[Dict[str, Any]]:
+    stmt = (
+        select(
+            ncrm_cotiext.idextra,
+            ncrm_cotiext.fk_idcoti,
+            ncrm_cotiext.costoe,
+            ncrm_cotiext.descripcion,
+            ncrm_cotiext.fk_idusuario,
+            ncrm_cotiext.fecha,
+            ncrm_cotiext.estado,
+        )
+        .where(ncrm_cotiext.fk_idcoti == quotation_id)
+        .order_by(ncrm_cotiext.idextra)
+    )
+
+    return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+
+
 def get_conditions_quotation_info(
     quotation_id: int,
     db_quote: Session,

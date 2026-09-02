@@ -7,7 +7,7 @@ from app.database import get_db, get_db_quote
 from app.crud.chats import create_chat
 from app.crud.chats_members import add_member_to_chat
 from app.crud.contacts import get_contact_by_id
-from app.crud.quotations import get_conditions_quotation_info, get_costs_quotation_info, get_quotation_company_contacts, get_quotation_files, get_quotation_info, get_prospect_quotation_info, get_products_quotation_info, get_equipment_quotation_info, get_configured_equipment_scopes, get_equipment_scopes, save_quotation_file
+from app.crud.quotations import get_conditions_quotation_info, get_costs_quotation_info, get_quotation_company_contacts, get_quotation_extras, get_quotation_files, get_quotation_info, get_prospect_quotation_info, get_products_quotation_info, get_equipment_quotation_info, get_configured_equipment_scopes, get_equipment_scopes, save_quotation_file
 
 
 router = APIRouter(prefix="/quotations", tags=["quotations"])
@@ -99,6 +99,18 @@ async def get_quotation_costs_route(quotation_id: int, db_quote: Session = Depen
     return {
         "success": True,
         "data": quotation_costs_info,
+    }
+
+
+@router.get("/{quotation_id}/extras")
+async def get_quotation_extras_route(quotation_id: int, db_quote: Session = Depends(get_db_quote)):
+    quotation_extras = get_quotation_extras(quotation_id, db_quote)
+    if not quotation_extras:
+            return {"success": False, "message": "Los extras de la cotizacion no se encontraron"}
+
+    return {
+        "success": True,
+        "data": quotation_extras,
     }
 
 
