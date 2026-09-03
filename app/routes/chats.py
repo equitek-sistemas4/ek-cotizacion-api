@@ -24,10 +24,10 @@ from app.crud.contacts import (
 )
 from app.config import settings
 from app.database import get_db, get_db_quote, get_db_vmaps
-from app.models import empresa_contacto
+from app.models import Chats, empresa, empresa_contacto
 from app.schemas.chat_messages import serialize_chat_message
 from app.services.whatsapp import WhatsAppService
-from app.utils.utils import create_access_token, serialize_message
+from app.utils.utils import decode_access_token, serialize_message
 
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -51,6 +51,37 @@ def validate_internal_chat_api_key(
         expected_api_key.encode("utf-8"),
     ):
         raise HTTPException(status_code=401, detail="API key interna invalida")
+
+
+@internal_router.post("/validate-token")
+async def validate_integration_token(
+    token: str = Form(...),
+    chat_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(token)
+    chat = db.query(Chats).filter(Chats.id == chat_id).first()
+
+    if chat is None:
+        raise HTTPException(status_code=401, detail="Chat invalido")
+
+    if (
+        payload.get("token_use") != "quotation_chat"
+        or payload.get("chat_id") != chat.id
+        or payload.get("quotation_id") != chat.quotation_id
+    ):
+        raise HTTPException(status_code=401, detail="Token no corresponde al chat")
+
+    created_at = chat.created_at.isoformat() + "Z" if chat.created_at else None
+    return {
+        "data": {
+            "valid": True,
+            "chat_id": chat.id,
+            "quotation_id": chat.quotation_id,
+            "user_id": chat.user_id,
+            "created_at": created_at,
+        }
+    }
 
 
 @router.post("/create")
@@ -90,14 +121,36 @@ async def create_chat_from_quotation_route(
     db_quote: Session = Depends(get_db_quote),
     _api_key: None = Depends(validate_internal_chat_api_key),
 ):
+    existing_chat = (
+        db.query(Chats)
+        .filter(Chats.quotation_id == quotation_id)
+        .first()
+    )
+    if existing_chat is not None:
+        redirect_url = (
+            f"{settings.frontend_url.rstrip('/')}/quotation-integration/"
+            f"{existing_chat.id}"
+        )
+        return {
+            "redirect_url": redirect_url,
+            "chat_id": existing_chat.id,
+            "quotation_id": existing_chat.quotation_id,
+            "success": True,
+        }
+
     contact = contact_exists_by_empresa_contacto_id(db, idempresa_contacto)
 
     if contact is None:
-        company_contact = (
-            db_quote.query(empresa_contacto)
+        company_data = (
+            db_quote.query(empresa_contacto, empresa.empresa)
+            .join(empresa, empresa.idempresa == empresa_contacto.fk_idempresa)
             .filter(empresa_contacto.idempresa_contacto == idempresa_contacto)
             .first()
         )
+        if company_data is None:
+            raise HTTPException(status_code=404, detail="Contacto de empresa no encontrado")
+
+        company_contact, company_name = company_data
         if company_contact is None:
             raise HTTPException(status_code=404, detail="Contacto de empresa no encontrado")
 
@@ -112,7 +165,8 @@ async def create_chat_from_quotation_route(
             db,
             name=company_contact.nombre,
             phone_number=phone_number,
-            display_name=company_contact.titulo,
+            display_name=company_contact.nombre,
+            company=company_name,
             position=company_contact.funcion,
             idempresa_contacto=company_contact.idempresa_contacto,
             fk_idempresa=company_contact.fk_idempresa,
@@ -126,18 +180,16 @@ async def create_chat_from_quotation_route(
         quotation_id=quotation_id,
     )
     members = add_member_to_chat(db, chat.id, [contact.id])
-    member = members[0] if members else None
+    redirect_url = (
+        f"{settings.frontend_url.rstrip('/')}/quotation-integration/"
+        f"{chat.id}"
+    )
 
     return {
+        "redirect_url": redirect_url,
+        "chat_id": chat.id,
+        "quotation_id": quotation_id,
         "success": True,
-        "message": "Chat creado y contacto agregado",
-        "data": {
-            "chat_id": chat.id,
-            "contact_id": contact.id,
-            "idempresa_contacto": contact.idempresa_contacto,
-            "access_code": member.access_code if member else None,
-            "token_type": "bearer",
-        },
     }
 
 
