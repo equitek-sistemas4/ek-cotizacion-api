@@ -291,7 +291,7 @@ class ncrm_alcval(Base_quote):
     __tablename__ = "ncrm_alcval"
 
     idalcval = Column(Integer, primary_key=True, index=True)
-    description = Column(String(7000), nullable=False)
+    descripcion = Column(String(7000), nullable=False)
     costo = Column(Numeric(10, 2), nullable=False)
     fk_idcequipo = Column(Integer, nullable=False)
     fk_idusuario = Column(Integer, nullable=False)

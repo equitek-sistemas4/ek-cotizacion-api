@@ -182,6 +182,7 @@ async def get_quotation_equipment_scopes_route(
             db_quote,
         )
         scope_values_by_presentation = {}
+        improvements_by_id = {}
 
         for presentation in presentations:
             scopes_response = get_equipment_scopes(
@@ -192,6 +193,9 @@ async def get_quotation_equipment_scopes_route(
                 db_quote=db_quote,
             )
             scopes = scopes_response["data"]["Alcances"]
+            for scope in scopes:
+                for improvement in scope["validation_values"]:
+                    improvements_by_id[improvement["fk_idalcval"]] = improvement
             scope_values_by_presentation[presentation["idpresen"]] = {
                 scope["fk_idalcance"]: scope
                 for scope in scopes
@@ -218,6 +222,10 @@ async def get_quotation_equipment_scopes_route(
                             .get(presentation["idpresen"], {})
                             .get(scope_id, {})
                             .get("fk_idalcval"),
+                            "validation_values": scope_values_by_presentation
+                            .get(presentation["idpresen"], {})
+                            .get(scope_id, {})
+                            .get("validation_values", []),
                         }
                         for presentation in presentations
                     ],
@@ -227,6 +235,7 @@ async def get_quotation_equipment_scopes_route(
         equipment_matrix.append(
             {
                 **equipment_info,
+                "mejoras": list(improvements_by_id.values()),
                 "Alcances": rows,
             }
         )

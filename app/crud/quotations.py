@@ -146,7 +146,7 @@ def get_quotation_files(
         )
         .where(
             ncrm_arch.fk_idcoti == quotation_id,
-            ncrm_arch.fk_idusuario == user_id,
+            #ncrm_arch.fk_idusuario == user_id,
             ncrm_arch.estado == 1,
         )
         .order_by(ncrm_arch.fecha.desc(), ncrm_arch.idarch.desc())
@@ -727,7 +727,9 @@ def get_equipment_scopes(
     validation_values_stmt = (
         select(
             ncrm_alcvalequ.fk_idalcequ,
-            func.group_concat(ncrm_alcvalequ.fk_idalcval).label("fk_idalcval"),
+            ncrm_alcval.idalcval.label("fk_idalcval"),
+            ncrm_alcval.descripcion,
+            ncrm_alcval.costo,
         )
         .select_from(ncrm_alcvalequ)
         .outerjoin(ncrm_alcval, ncrm_alcvalequ.fk_idalcval == ncrm_alcval.idalcval)
@@ -735,14 +737,18 @@ def get_equipment_scopes(
             ncrm_alcval.estado == 1,
             ncrm_alcvalequ.fk_idalcequ.in_(active_scope_ids),
         )
-        .group_by(ncrm_alcvalequ.fk_idalcequ)
     )
     if equipment_id is not None:
         validation_values_stmt = validation_values_stmt.where(
             ncrm_alcval.fk_idcequipo == equipment_id
         )
 
-    validation_values = validation_values_stmt.subquery()
+    validation_values_by_scope: Dict[int, List[Dict[str, Any]]] = {}
+    for row in db_quote.execute(validation_values_stmt).mappings().all():
+        validation_value = dict(row)
+        scope_id = validation_value.pop("fk_idalcequ")
+        validation_values_by_scope.setdefault(scope_id, []).append(validation_value)
+
     scopes_stmt = (
         select(
             ncrm_alcequ.idalcequ,
@@ -750,7 +756,6 @@ def get_equipment_scopes(
             ncrm_alcequ.valor,
             measure.label("medida"),
             ncrm_calcances.fk_idalcance,
-            validation_values.c.fk_idalcval,
         )
         .select_from(ncrm_calcances)
         .outerjoin(
@@ -764,10 +769,6 @@ def get_equipment_scopes(
             & (ncrm_alcequ.estado == 1)
             & (ncrm_alcequ.fk_idpresen == presentation_id),
         )
-        .outerjoin(
-            validation_values,
-            validation_values.c.fk_idalcequ == ncrm_alcequ.idalcequ,
-        )
         .where(
             ncrm_calcances.estado == 1,
             equipo_alcance.estado == 1,
@@ -777,6 +778,11 @@ def get_equipment_scopes(
         .order_by(equipo_alcance.orden)
     )
     scopes = [dict(row) for row in db_quote.execute(scopes_stmt).mappings().all()]
+    for scope in scopes:
+        values = validation_values_by_scope.get(scope["idalcequ"], []) if scope["idalcequ"] else []
+        # Se conserva el campo anterior para los consumidores que sólo requieren IDs.
+        scope["fk_idalcval"] = ",".join(str(value["fk_idalcval"]) for value in values) or None
+        scope["validation_values"] = values
 
     presentation_stmt = (
         select(
