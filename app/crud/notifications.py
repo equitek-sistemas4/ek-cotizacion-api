@@ -13,10 +13,12 @@ def create_notification(
     db: Session,
     user_id: int,
     section: str,
+    chat_id: Optional[int] = None,
 ) -> Notifications:
     notification = Notifications(
         user_id=user_id,
-        section=section
+        section=section,
+        chat_id=chat_id
     )
     db.add(notification)
     db.commit()
@@ -28,13 +30,16 @@ def read_notifications(
     db: Session,
     user_id: int,
     section: str,
+    chat_id: Optional[int] = None,
 ) -> List[Notifications]:
-    notifications = (
-        db.query(Notifications)
-        .filter(Notifications.user_id == user_id, Notifications.section == section)
-        .order_by(Notifications.created_at.desc())
-        .all()
+    query = db.query(Notifications).filter(
+        Notifications.user_id == user_id,
+        Notifications.section == section,
     )
+    if chat_id is not None:
+        query = query.filter(Notifications.chat_id == chat_id)
+
+    notifications = query.order_by(Notifications.created_at.desc()).all()
     for notification in notifications:
         if notification.status:
             notification.status = False

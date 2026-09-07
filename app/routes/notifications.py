@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Form, Path
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ def serialize_notification(notification) -> dict:
         "id": notification.id,
         "user_id": notification.user_id,
         "section": notification.section,
+        "chat_id": notification.chat_id,
         "status": notification.status,
         "created_at": (
             notification.created_at.isoformat()
@@ -30,12 +33,14 @@ def serialize_notification(notification) -> dict:
 async def create_notification_route(
     user_id: int = Form(..., ge=1),
     section: str = Form(..., min_length=1),
+    chat_id: Optional[int] = Form(None, ge=1),
     db: Session = Depends(get_db),
 ):
     notification = create_notification(
         db,
         user_id=user_id,
         section=section,
+        chat_id=chat_id,
     )
 
     return {
@@ -65,12 +70,14 @@ async def get_unread_notifications_route(
 async def read_notifications_route(
     user_id: int = Form(..., ge=1),
     section: str = Form(..., min_length=1),
+    chat_id: Optional[int] = Form(None, ge=1),
     db: Session = Depends(get_db),
 ):
     notifications = read_notifications(
         db,
         user_id=user_id,
         section=section,
+        chat_id=chat_id
     )
 
     return {

@@ -768,6 +768,33 @@ class ncrmp_producto(Base_quote):
     descripcion = Column(String(500), nullable=True)
 
 
+class equipo_reqelec(Base_quote):
+    __tablename__ = "equipo_reqelec"
+
+    idrecele = Column(Integer, primary_key=True, index=True)
+    requ = Column(String(250), nullable=False)
+
+
+class equipo_reqneu(Base_quote):
+    __tablename__ = "equipo_reqneu"
+
+    idrecneu = Column(Integer, primary_key=True, index=True)
+    requn = Column(String(250), nullable=False)
+    med = Column(String(60), nullable=False)
+
+
+class equreq_elecneu(Base_quote):
+    __tablename__ = "equreq_elecneu"
+
+    idere = Column(Integer, primary_key=True, index=True)
+    valor = Column(Numeric(10, 2), nullable=False)
+    fk_idusuario = Column(Integer, nullable=False)
+    fk_idreqelec = Column(Integer, nullable=True)
+    fk_idreqneu = Column(Integer, nullable=True)
+    fk_idequipo = Column(Integer, nullable=False)
+    estado = Column(Integer, nullable=False)
+
+
 ######################## MODELOS DE LA BASE DE DATOS VMAPS3 ########################
 class monedas(Base_vmaps):
     __tablename__ = "monedas"
@@ -990,6 +1017,7 @@ class Notifications(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False)
     section = Column(String(100), nullable=False)
+    chat_id = Column(Integer, nullable=True)
     status = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.now)
 

@@ -43,7 +43,10 @@ from app.models import (
     equipo_costo,
     equipo_familia,
     equipo_layout,
+    equipo_reqelec,
+    equipo_reqneu,
     equipo_serie,
+    equreq_elecneu,
     iva,
     ncrm_contacto,
     proyecto,
@@ -665,7 +668,59 @@ def get_equipment_quotation_info(
     if equipment_id is not None:
         stmt = stmt.where(ncrm_equipos.idcequipos == equipment_id)
 
-    return [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+    equipment = [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+    equipment_ids = {item["idequipo"] for item in equipment if item["idequipo"] is not None}
+    if not equipment_ids:
+        return equipment
+
+    electric_stmt = (
+        select(
+            equreq_elecneu.idere,
+            equreq_elecneu.fk_idequipo,
+            equreq_elecneu.valor,
+            equipo_reqelec.requ,
+        )
+        .select_from(equreq_elecneu)
+        .join(equipo_reqelec, equreq_elecneu.fk_idreqelec == equipo_reqelec.idrecele)
+        .where(
+            equreq_elecneu.estado == 1,
+            equreq_elecneu.fk_idequipo.in_(equipment_ids),
+        )
+        .order_by(equipo_reqelec.requ)
+    )
+    electrical_by_equipment: Dict[int, List[Dict[str, Any]]] = {}
+    for row in db_quote.execute(electric_stmt).mappings().all():
+        requirement = dict(row)
+        requirement_equipment_id = requirement.pop("fk_idequipo")
+        electrical_by_equipment.setdefault(requirement_equipment_id, []).append(requirement)
+
+    pneumatic_stmt = (
+        select(
+            equreq_elecneu.idere,
+            equreq_elecneu.fk_idequipo,
+            equreq_elecneu.valor,
+            equipo_reqneu.requn,
+            equipo_reqneu.med,
+        )
+        .select_from(equreq_elecneu)
+        .join(equipo_reqneu, equreq_elecneu.fk_idreqneu == equipo_reqneu.idrecneu)
+        .where(
+            equreq_elecneu.estado == 1,
+            equreq_elecneu.fk_idequipo.in_(equipment_ids),
+        )
+        .order_by(equipo_reqneu.med)
+    )
+    pneumatic_by_equipment: Dict[int, List[Dict[str, Any]]] = {}
+    for row in db_quote.execute(pneumatic_stmt).mappings().all():
+        requirement = dict(row)
+        requirement_equipment_id = requirement.pop("fk_idequipo")
+        pneumatic_by_equipment.setdefault(requirement_equipment_id, []).append(requirement)
+
+    for item in equipment:
+        item["Electricos"] = electrical_by_equipment.get(item["idequipo"], [])
+        item["Neumaticos"] = pneumatic_by_equipment.get(item["idequipo"], [])
+
+    return equipment
 
 
 def get_configured_equipment_scopes(
