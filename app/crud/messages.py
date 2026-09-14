@@ -413,5 +413,23 @@ def get_chat_messages(
     )
 
 
+def search_messages_by_phone_number(
+    db: Session,
+    phone_number: str,
+    search: str,
+) -> List[Messages]:
+    """Busca texto dentro del historial de un número de WhatsApp."""
+    search_term = f"%{search.strip()}%"
+    return (
+        db.query(Messages)
+        .filter(
+            Messages.phone_number.in_(get_phone_number_lookup_values(phone_number)),
+            Messages.text.ilike(search_term),
+        )
+        .order_by(Messages.created_at.asc())
+        .all()
+    )
+
+
 def getAllMessages(db: Session) -> List[Messages]:
     return db.query(Messages).order_by(Messages.created_at.desc()).all()

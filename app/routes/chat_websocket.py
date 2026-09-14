@@ -117,12 +117,15 @@ async def whatsapp_messages_websocket(
 
     try:
         while True:
-            await websocket.receive()
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
     except WebSocketDisconnect:
-        whatsapp_manager.disconnect(websocket)
+        pass
     except Exception:
-        whatsapp_manager.disconnect(websocket)
         await websocket.close(code=1011, reason="Error interno")
+    finally:
+        whatsapp_manager.disconnect(websocket)
 
 
 def get_sender_from_token(payload: dict, chat_id: int) -> Tuple[int, str]:

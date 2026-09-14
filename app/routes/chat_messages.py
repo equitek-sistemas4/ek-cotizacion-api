@@ -10,10 +10,12 @@ from fastapi.responses import JSONResponse
 from app.crud.chats import get_chat_by_id
 from app.crud.chats_messages import get_messages, search_chat_messages
 from app.crud.contacts import get_contact_by_id
+from app.crud.messages import search_messages_by_phone_number
 from app.crud.users import get_user_by_id
 from app.models import ChatFiles, ChatMessages
 from app.routes.chat_websocket import manager
 from app.schemas.chat_messages import serialize_chat_message
+from app.utils.utils import serialize_message
 
 
 router = APIRouter(prefix="/chat_messages", tags=["chat_messages"])
@@ -195,4 +197,18 @@ async def search_chat_messages_route(
             }
             for message in messages
         ],
+    }
+
+
+@router.get("/phone/{phone_number}/search")
+async def search_messages_by_phone_number_route(
+    phone_number: str,
+    search: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+):
+    """Busca mensajes de WhatsApp por texto para un número telefónico."""
+    messages = search_messages_by_phone_number(db, phone_number, search)
+    return {
+        "success": True,
+        "data": [serialize_message(message) for message in messages],
     }
