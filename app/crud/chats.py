@@ -115,6 +115,7 @@ def get_chat_with_members(db: Session, chat_id: int) -> Optional[Dict]:
         "id": chat.id,
         "name": chat.name,
         "description": chat.description,
+        "user_id": chat.user_id,
         "quotation_id": chat.quotation_id,
         "created_at": chat.created_at.isoformat() if chat.created_at else None,
         "members": members,

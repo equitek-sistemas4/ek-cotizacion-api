@@ -267,6 +267,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
             ncrm_coti.tc,
             ncrm_coti.costo,
             ncrm_coti.entrega,
+            ncrm_coti.fk_idclon.label("idcoti_antigua"),
             usuarios.idusuario.label("usuario_id"),
             usuarios.usuario,
             func.concat_ws(" ", usuario_personal.nick, usuario_personal.ap_paterno).label("vendedor_nombre"),

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import ChatMembers, ChatMessages, Chats, Messages, Contact
 from app.services.whatsapp import WhatsAppService
+from app.services.client_waiting_alerts import register_chat_message_for_sla
 from app.utils.utils import get_whatsapp_message_id, normalize_phone_number
 
 
@@ -169,12 +170,13 @@ async def forward_incoming_message_to_chat_members(
     for sender_member, chat in sender_memberships:
         chat_message = ChatMessages(
             chat_id=sender_member.chat_id,
-            contact_id=sender.id,
+            sender_id=sender.id,
+            sender_type="contact",
             text=text,
         )
         db.add(chat_message)
-        db.commit()
-        db.refresh(chat_message)
+        db.flush()
+        register_chat_message_for_sla(db, chat_message)
 
         chats.append({
             "id": chat.id,
@@ -278,6 +280,8 @@ async def chat_send_and_save_text_message(
             text=saved_text,
         )
         db.add(chat_message)
+        db.flush()
+        register_chat_message_for_sla(db, chat_message)
         db.commit()
         db.refresh(chat_message)
 

@@ -485,6 +485,7 @@ class ncrm_coti(Base_quote):
     tc = Column(Numeric(10, 4), nullable=True)
     costo = Column(Numeric(10, 4), nullable=True)
     entrega = Column(Integer, nullable=True)
+    fk_idclon = Column(Integer, nullable=True)
 
 
 class usuario_personal(Base_quote):
@@ -891,6 +892,11 @@ class Chats(Base):
     status = Column(Integer, default=1)  # 1: active, 0: inactive
     quotation_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
+    # Estado del SLA de "cliente esperando". Se actualiza exclusivamente en backend.
+    hora_ultimo_mensaje_entrante = Column(DateTime, nullable=True, index=True)
+    hora_ultima_respuesta_vendedor = Column(DateTime, nullable=True)
+    ultima_alerta_enviada = Column(DateTime, nullable=True)
+    etapa_escalamiento = Column(Integer, nullable=False, default=0)
 
 
 class Chats_Whatsapp(Base):
@@ -965,6 +971,32 @@ class Users(Base):
     phone_number = Column(String(30), index=True, nullable=False)
     status = Column(Integer, default=1)  # 1: active, 0: inactive
     created_at = Column(DateTime, default=datetime.now)
+
+
+class UserAlertSettings(Base):
+    """Destino WhatsApp y responsable directo para usuarios de VMAPS.
+
+    Los ids corresponden a ``Chats.user_id`` / ``Usuarios.idusuario``. Mantener
+    esta configuración separada evita asumir que el id de ``users`` local es el
+    mismo que el de VMAPS.
+    """
+    __tablename__ = "user_alert_settings"
+
+    user_id = Column(Integer, primary_key=True)
+    whatsapp_phone_number = Column(String(30), nullable=False)
+    supervisor_user_id = Column(Integer, nullable=True, index=True)
+    status = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class ClientWaitingAlertLog(Base):
+    __tablename__ = "client_waiting_alert_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipient_user_id = Column(Integer, nullable=False, index=True)
+    chat_id = Column(Integer, nullable=True, index=True)
+    alert_type = Column(String(20), nullable=False)  # individual, summary, escalation
+    created_at = Column(DateTime, default=datetime.now, index=True)
 
 
 class Permissions(Base):

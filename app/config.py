@@ -33,6 +33,17 @@ class Settings:
     secret_key = os.getenv("SECRET_KEY")
     internal_chat_api_key = os.getenv("INTERNAL_CHAT_API_KEY")
     frontend_url = os.getenv("FRONTEND_URL")
+    client_waiting_alert_minutes = int(os.getenv("CLIENT_WAITING_ALERT_MINUTES", "5"))
+    client_waiting_escalation_minutes = int(
+        os.getenv("CLIENT_WAITING_ESCALATION_MINUTES", "10")
+    )
+    client_waiting_scheduler_seconds = int(
+        os.getenv("CLIENT_WAITING_SCHEDULER_SECONDS", "60")
+    )
+    client_waiting_max_alerts_per_hour = int(
+        os.getenv("CLIENT_WAITING_MAX_ALERTS_PER_HOUR", "3")
+    )
+    whatsapp_alert_template_language = os.getenv("WHATSAPP_ALERT_TEMPLATE_LANGUAGE", "es_MX")
     access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "600"))
     quotation_files_directory = os.getenv(
         "QUOTATION_FILES_DIRECTORY", "uploads/quotation_files"

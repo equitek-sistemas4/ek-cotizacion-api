@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models import ChatFiles, ChatMessages
 from app.routes.chat_websocket import manager
 from app.schemas.chat_messages import serialize_chat_message
+from app.services.client_waiting_alerts import register_chat_message_for_sla
 
 
 router = APIRouter(prefix="/chat_files", tags=["chat_files"])
@@ -90,6 +91,7 @@ async def send_file_message(
         )
         db.add(message)
         db.flush()
+        register_chat_message_for_sla(db, message)
         db.add(
             ChatFiles(
                 chat_message_id=message.id,

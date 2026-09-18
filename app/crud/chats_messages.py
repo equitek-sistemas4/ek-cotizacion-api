@@ -3,7 +3,8 @@ from typing import List, Optional, Tuple
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models import ChatMessages, Contact, Usuarios
+from app.models import ChatMessages, Chats, Contact, Usuarios, ncrm_coti
+from app.services.client_waiting_alerts import register_chat_message_for_sla
 
 
 def create_chat_message(
@@ -20,6 +21,8 @@ def create_chat_message(
         text=text,
     )
     db.add(message)
+    db.flush()
+    register_chat_message_for_sla(db, message)
     db.commit()
     db.refresh(message)
     return message
@@ -28,9 +31,27 @@ def create_chat_message(
 def get_messages(
     db: Session,
     db_vmaps: Session,
+    db_quote: Session,
     chat_id: int,
     limit: int = 100,
 ) -> List[Tuple[ChatMessages, Optional[Contact], Optional[Usuarios]]]:
+    chat_ids = [chat_id]
+    chat = db.get(Chats, chat_id)
+
+    if chat is not None:
+        quotation = db_quote.get(ncrm_coti, chat.quotation_id)
+        parent_quotation_id = quotation.fk_idclon if quotation is not None else None
+
+        if parent_quotation_id is not None:
+            parent_chat = (
+                db.query(Chats)
+                .filter(Chats.quotation_id == parent_quotation_id)
+                .order_by(Chats.created_at.asc())
+                .first()
+            )
+            if parent_chat is not None:
+                chat_ids.append(parent_chat.id)
+
     messages = (
         db.query(ChatMessages, Contact)
         .outerjoin(
@@ -40,7 +61,7 @@ def get_messages(
                 ChatMessages.sender_id == Contact.id,
             ),
         )
-        .filter(ChatMessages.chat_id == chat_id)
+        .filter(ChatMessages.chat_id.in_(chat_ids))
         .order_by(ChatMessages.created_at.asc())
         .limit(limit)
         .all()

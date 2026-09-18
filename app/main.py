@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
@@ -6,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
+from app.services.client_waiting_alerts import ClientWaitingAlertService
 from app import models
 from app.routes.contacts import router as contacts_router
 from app.routes.whatsapp import router as whatsapp_router
@@ -28,7 +31,34 @@ from app.utils.utils import validate_access_token
 Base.metadata.create_all(bind=engine)
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="PruebasCom API", version="0.1.0")
+
+async def client_waiting_alert_worker() -> None:
+    """Worker ligero del proceso API; no depende de conexiones del frontend."""
+    service = ClientWaitingAlertService()
+    while True:
+        db = SessionLocal()
+        try:
+            await service.process_due_alerts(db)
+        except Exception:
+            db.rollback()
+            logging.getLogger(__name__).exception("Error en worker de cliente esperando")
+        finally:
+            db.close()
+        await asyncio.sleep(max(settings.client_waiting_scheduler_seconds, 10))
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(client_waiting_alert_worker(), name="client-waiting-alerts")
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(title="PruebasCom API", version="0.1.0", lifespan=lifespan)
 
 uploads_directory = Path(__file__).resolve().parents[1] / "uploads"
 uploads_directory.mkdir(parents=True, exist_ok=True)

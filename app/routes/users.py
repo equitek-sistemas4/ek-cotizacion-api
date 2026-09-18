@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.crud.users import create_user, delete_user, get_all_users_vmaps, update_user, get_all_users
 from app.database import get_db, get_db_vmaps
+from app.models import UserAlertSettings
+from app.crud.users import clean_user_phone_number
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -115,4 +117,36 @@ async def delete_user_route(user_id: int, db: Session = Depends(get_db)):
     return {
         "success": True,
         "message": "Usuario eliminado",
+    }
+
+
+@router.put("/{user_id}/alert-settings")
+async def update_alert_settings_route(
+    user_id: int,
+    whatsapp_phone_number: str = Form(...),
+    supervisor_user_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Configura el teléfono y responsable usados solo por alertas backend."""
+    phone_number = clean_user_phone_number(whatsapp_phone_number)
+    if not phone_number:
+        return {"success": False, "message": "whatsapp_phone_number es requerido"}
+
+    setting = db.get(UserAlertSettings, user_id)
+    if setting is None:
+        setting = UserAlertSettings(user_id=user_id, whatsapp_phone_number=phone_number)
+        db.add(setting)
+    else:
+        setting.whatsapp_phone_number = phone_number
+        setting.status = 1
+    setting.supervisor_user_id = supervisor_user_id
+    db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "user_id": setting.user_id,
+            "supervisor_user_id": setting.supervisor_user_id,
+            "whatsapp_phone_number": setting.whatsapp_phone_number,
+        },
     }

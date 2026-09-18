@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from app.database import get_db, get_db_vmaps
+from app.database import get_db, get_db_quote, get_db_vmaps
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
@@ -15,6 +15,7 @@ from app.crud.users import get_user_by_id
 from app.models import ChatFiles, ChatMessages
 from app.routes.chat_websocket import manager
 from app.schemas.chat_messages import serialize_chat_message
+from app.services.client_waiting_alerts import register_chat_message_for_sla
 from app.utils.utils import serialize_message
 
 
@@ -125,6 +126,7 @@ async def create_chat_message_route(
         )
         db.add(message)
         db.flush()
+        register_chat_message_for_sla(db, message)
 
         if file is not None:
             db.add(
@@ -166,8 +168,9 @@ async def get_chat_messages_route(
     chat_id: int,
     db: Session = Depends(get_db),
     db_vmaps: Session = Depends(get_db_vmaps),
+    db_quote: Session = Depends(get_db_quote),
 ):
-    chats = get_messages(db, db_vmaps, chat_id)
+    chats = get_messages(db, db_vmaps, db_quote, chat_id)
     return {
         "success": True,
         "data": [

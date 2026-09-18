@@ -252,6 +252,7 @@ async def get_chat_messages_route(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     db_vmaps: Session = Depends(get_db_vmaps),
+    db_quote: Session = Depends(get_db_quote),
 ):
     chat = get_chat_by_id(db, chat_id)
     if chat is None:
@@ -260,7 +261,7 @@ async def get_chat_messages_route(
             "message": "Chat no encontrado",
         }
 
-    messages = get_messages(db, db_vmaps, chat_id, limit)
+    messages = get_messages(db, db_vmaps, db_quote, chat_id, limit)
     return {
         "success": True,
         "data": {
@@ -358,7 +359,7 @@ async def send_message_to_chat(
         db,
         service,
         chat_id,
-        sender_id=1,
+        sender_id=chat["user_id"],
         text=text,
         file_bytes=file_bytes,
         filename=file.filename if file else None,
