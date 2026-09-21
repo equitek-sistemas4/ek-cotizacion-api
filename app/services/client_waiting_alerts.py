@@ -25,7 +25,6 @@ ALERT_TEMPLATE = "alert_message"
 
 
 def register_chat_message_for_sla(db: Session, message: ChatMessages) -> None:
-    """Actualiza el caso abierto sin generar notificaciones desde el cliente."""
     chat = db.get(Chats, message.chat_id)
     if chat is None:
         return
@@ -169,7 +168,12 @@ class ClientWaitingAlertService:
             await self.whatsapp.send_template_message(
                 to=phone_number,
                 template=ALERT_TEMPLATE,
-                parameters=[contact_name, f"{elapsed_minutes} min", url],
+                parameters=[
+                    contact_name,
+                    str(chat.quotation_id),
+                    f"{elapsed_minutes} min",
+                    url,
+                ],
                 language_code=settings.whatsapp_alert_template_language,
             )
         except Exception:
@@ -192,12 +196,17 @@ class ClientWaitingAlertService:
         now: datetime,
     ) -> bool:
         entries = list(entries)
-        dashboard_url = f"{(settings.frontend_url or '').rstrip('/')}/chats?pending=1"
+        dashboard_url = f"{(settings.frontend_url or '').rstrip('/')}/chat"
         try:
             await self.whatsapp.send_template_message(
                 to=phone_number,
                 template=ALERT_TEMPLATE,
-                parameters=[f"Tienes {len(entries)} conversaciones pendientes", "ahora", dashboard_url],
+                parameters=[
+                    f"Tienes {len(entries)} conversaciones pendientes",
+                    "Varias cotizaciones",
+                    "ahora",
+                    dashboard_url,
+                ],
                 language_code=settings.whatsapp_alert_template_language,
             )
         except Exception:
