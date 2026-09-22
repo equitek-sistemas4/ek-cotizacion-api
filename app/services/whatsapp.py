@@ -85,10 +85,7 @@ class WhatsAppService:
         if components:
             for component in components:
                 if isinstance(component, BaseModel):
-                    if hasattr(component, "model_dump"):
-                        template_components.append(component.model_dump(exclude_none=True))
-                    else:
-                        template_components.append(component.dict(exclude_none=True))
+                    template_components.append(component.dict(exclude_none=True))
                 elif isinstance(component, dict):
                     template_components.append({
                         key: value
@@ -100,10 +97,7 @@ class WhatsAppService:
             body_parameters = []
             for param in parameters:
                 if isinstance(param, BaseModel):
-                    if hasattr(param, "model_dump"):
-                        body_parameters.append(param.model_dump())
-                    else:
-                        body_parameters.append(param.dict())
+                    body_parameters.append(param.dict())
                 elif isinstance(param, dict):
                     body_parameters.append(param)
                 else:

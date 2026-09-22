@@ -131,6 +131,15 @@ async def receive_webhook(
                 received_messages += len(value.get("messages", []))
                 received_statuses += len(value.get("statuses", []))
 
+                for status in value.get("statuses", []):
+                    logger.warning(
+                        "Estado de mensaje WhatsApp: id=%s destinatario=%s estado=%s errores=%s",
+                        status.get("id"),
+                        status.get("recipient_id"),
+                        status.get("status"),
+                        status.get("errors"),
+                    )
+
                 for msg in value.get("messages", []):
                     incoming_message = build_incoming_message(msg)
                     if incoming_message is None:

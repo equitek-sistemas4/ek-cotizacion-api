@@ -3,7 +3,7 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ from app.services.whatsapp import WhatsAppService
 
 logger = logging.getLogger(__name__)
 
-ALERT_TEMPLATE = "alert_message"
+ALERT_TEMPLATE = "alert_message_pending"
 
 
 def register_chat_message_for_sla(db: Session, message: ChatMessages) -> None:
@@ -36,6 +36,11 @@ def register_chat_message_for_sla(db: Session, message: ChatMessages) -> None:
         return
 
     if message.sender_type == "user" and message.sender_id == chat.user_id:
+        # Un log individual puede haber sido dirigido al vendedor o a su
+        # supervisor. chat_id es el vínculo inequívoco para limpiar ambos.
+        db.query(ClientWaitingAlertLog).filter(
+            ClientWaitingAlertLog.chat_id == chat.id
+        ).delete(synchronize_session=False)
         chat.hora_ultima_respuesta_vendedor = timestamp
         chat.ultima_alerta_enviada = None
         chat.etapa_escalamiento = 0
@@ -66,7 +71,7 @@ class ClientWaitingAlertService:
             .with_for_update()
             .all()
         )
-        pending_by_recipient: Dict[int, list[tuple[Chats, str]]] = defaultdict(list)
+        pending_by_recipient: Dict[int, List[Tuple[Chats, str]]] = defaultdict(list)
 
         for chat in due_chats:
             if not _is_waiting(chat):
@@ -192,7 +197,7 @@ class ClientWaitingAlertService:
         db: Session,
         recipient_id: int,
         phone_number: str,
-        entries: Iterable[tuple[Chats, str]],
+        entries: Iterable[Tuple[Chats, str]],
         now: datetime,
     ) -> bool:
         entries = list(entries)

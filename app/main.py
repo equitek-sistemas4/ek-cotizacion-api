@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from contextlib import asynccontextmanager, suppress
+from contextlib import suppress
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
@@ -47,18 +47,24 @@ async def client_waiting_alert_worker() -> None:
         await asyncio.sleep(max(settings.client_waiting_scheduler_seconds, 10))
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    task = asyncio.create_task(client_waiting_alert_worker(), name="client-waiting-alerts")
-    try:
-        yield
-    finally:
-        task.cancel()
+app = FastAPI(title="PruebasCom API", version="0.1.0")
+client_waiting_alert_task = None
+
+
+@app.on_event("startup")
+async def start_client_waiting_alert_worker():
+    """Inicia el worker sin usar APIs introducidas después de Python 3.6."""
+    global client_waiting_alert_task
+    client_waiting_alert_task = asyncio.ensure_future(client_waiting_alert_worker())
+
+
+@app.on_event("shutdown")
+async def stop_client_waiting_alert_worker():
+    """Cancela ordenadamente el worker cuando el proceso se detiene."""
+    if client_waiting_alert_task is not None:
+        client_waiting_alert_task.cancel()
         with suppress(asyncio.CancelledError):
-            await task
-
-
-app = FastAPI(title="PruebasCom API", version="0.1.0", lifespan=lifespan)
+            await client_waiting_alert_task
 
 uploads_directory = Path(__file__).resolve().parents[1] / "uploads"
 uploads_directory.mkdir(parents=True, exist_ok=True)
