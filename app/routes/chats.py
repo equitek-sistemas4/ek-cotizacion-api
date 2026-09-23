@@ -17,6 +17,7 @@ from app.crud.messages import (
     get_chat_messages as get_chat_messages_from_db,
     chat_send_and_save_text_message,
 )
+from app.crud.users import get_user_by_id
 from app.crud.contacts import (
     contact_exists_by_empresa_contacto_id,
     create_contact,
@@ -119,8 +120,13 @@ async def create_chat_from_quotation_route(
     chat_description: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     db_quote: Session = Depends(get_db_quote),
+    db_vmaps: Session = Depends(get_db_vmaps),
     _api_key: None = Depends(validate_internal_chat_api_key),
 ):
+    user = get_user_by_id(db_vmaps, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuario no registrado")
+
     existing_chat = (
         db.query(Chats)
         .filter(Chats.quotation_id == quotation_id)
