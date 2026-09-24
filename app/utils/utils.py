@@ -188,7 +188,11 @@ def validate_access_token(authorization: Optional[str] = Header(None)) -> dict:
 
 
 def normalize_phone_number(phone_number: str) -> str:
-    normalized_phone_number = phone_number.replace("+", "").strip()
+    normalized_phone_number = "".join(
+        character for character in str(phone_number).strip() if character.isdigit()
+    )
+    if normalized_phone_number.startswith("00"):
+        normalized_phone_number = normalized_phone_number[2:]
     if normalized_phone_number.startswith("52") and not normalized_phone_number.startswith("521"):
         return f"521{normalized_phone_number[2:]}"
     return normalized_phone_number

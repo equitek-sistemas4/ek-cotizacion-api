@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -13,6 +14,7 @@ from app.utils.utils import decode_access_token, normalize_phone_number
 
 
 router = APIRouter(prefix="/chats", tags=["chat_websocket"])
+logger = logging.getLogger(__name__)
 
 
 class ChatConnectionManager:
@@ -57,30 +59,76 @@ class WhatsAppConnectionManager:
     ):
         await websocket.accept()
         self.active_connections.append((websocket, phone_number))
+        logger.info(
+            "WebSocket WhatsApp conectado: phone_number=%s conexiones_activas=%s",
+            phone_number,
+            len(self.active_connections),
+        )
 
     def disconnect(self, websocket: WebSocket):
+        disconnected_phone_numbers = [
+            phone_number
+            for connection, phone_number in self.active_connections
+            if connection is websocket
+        ]
         self.active_connections = [
             connection
             for connection in self.active_connections
             if connection[0] is not websocket
         ]
+        if disconnected_phone_numbers:
+            logger.info(
+                "WebSocket WhatsApp desconectado: phone_number=%s conexiones_activas=%s",
+                disconnected_phone_numbers[0],
+                len(self.active_connections),
+            )
 
-    async def broadcast_message(self, message: dict):
+    async def broadcast_message(self, message: dict) -> dict:
         disconnected = []
-        for connection, phone_number in self.active_connections:
+        total_connections = len(self.active_connections)
+        matching_connections = 0
+        sent_connections = 0
+        filtered_connections = 0
+        failed_connections = 0
+
+        for connection, phone_number in list(self.active_connections):
             if phone_number and phone_number != message["phone_number"]:
+                filtered_connections += 1
                 continue
+            matching_connections += 1
 
             try:
                 await connection.send_json({
                     "type": "whatsapp_message",
                     "data": message,
                 })
-            except RuntimeError:
+                sent_connections += 1
+            except (RuntimeError, WebSocketDisconnect):
                 disconnected.append(connection)
+                failed_connections += 1
 
         for connection in disconnected:
             self.disconnect(connection)
+
+        result = {
+            "total_connections": total_connections,
+            "matching_connections": matching_connections,
+            "sent_connections": sent_connections,
+            "filtered_connections": filtered_connections,
+            "failed_connections": failed_connections,
+        }
+        logger.info(
+            "Broadcast WebSocket WhatsApp: message_id=%s phone_number=%s "
+            "conexiones=%s coincidentes=%s enviadas=%s filtradas=%s fallidas=%s",
+            message.get("id"),
+            message.get("phone_number"),
+            total_connections,
+            matching_connections,
+            sent_connections,
+            filtered_connections,
+            failed_connections,
+        )
+        return result
 
 
 whatsapp_manager = WhatsAppConnectionManager()

@@ -175,7 +175,17 @@ async def receive_webhook(
         db.commit()
 
         for incoming_message in incoming_messages:
-            await whatsapp_manager.broadcast_message(incoming_message)
+            broadcast_result = await whatsapp_manager.broadcast_message(incoming_message)
+            logger.info(
+                "Webhook WhatsApp difundido por WebSocket: message_id=%s phone_number=%s "
+                "conexiones=%s enviadas=%s filtradas=%s fallidas=%s",
+                incoming_message.get("id"),
+                incoming_message.get("phone_number"),
+                broadcast_result["total_connections"],
+                broadcast_result["sent_connections"],
+                broadcast_result["filtered_connections"],
+                broadcast_result["failed_connections"],
+            )
 
         logger.warning(
             "Webhook WhatsApp POST recibido: entries=%s messages=%s statuses=%s saved=%s ids=%s forwarded=%s failed_forwards=%s",
