@@ -8,6 +8,7 @@ from app.crud.chats import create_chat
 from app.crud.chats_members import add_member_to_chat
 from app.crud.contacts import get_contact_by_id
 from app.crud.quotations import get_conditions_quotation_info, get_costs_quotation_info, get_quotation_company_contacts, get_quotation_extras, get_quotation_files, get_quotation_info, get_prospect_quotation_info, get_products_quotation_info, get_equipment_quotation_info, get_configured_equipment_scopes, get_equipment_scopes, save_quotation_file
+from app.models import Chats
 
 
 router = APIRouter(prefix="/quotations", tags=["quotations"])
@@ -258,6 +259,27 @@ async def create_link_quotation(
     quotation_id: int = Form(...),
     db: Session = Depends(get_db),
 ):
+    existing_chat = (
+        db.query(Chats)
+        .filter(Chats.quotation_id == quotation_id, Chats.status == 1)
+        .first()
+    )
+    if existing_chat is not None:
+        return {
+            "success": False,
+            "message": "Ya existe un chat para esta cotización",
+            "data": {
+                "chat_id": existing_chat.id,
+                "quotation_id": existing_chat.quotation_id,
+            },
+        }
+
+    if not contact_ids:
+        return {
+            "success": False,
+            "message": "Debes enviar al menos un contact_id",
+        }
+
     chat = create_chat(
         db,
         name,
@@ -265,12 +287,6 @@ async def create_link_quotation(
         user_id,
         quotation_id,
     )
-
-    if not contact_ids:
-        return {
-            "success": False,
-            "message": "Debes enviar al menos un contact_id",
-        }
 
     results = []
     missing_contacts = []
