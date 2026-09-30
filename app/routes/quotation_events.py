@@ -9,9 +9,13 @@ from app.crud.quotation_events import (
     get_contact_with_quotation_events,
     get_quotation_event_by_id,
     get_quotation_events,
+    get_quotation_ranking,
+    normalize_section_key,
+    contact_belongs_to_quotation,
+    register_section_opened,
     update_quotation_event,
 )
-from app.database import get_db
+from app.database import get_db, get_db_quote
 
 
 router = APIRouter(prefix="/quotation-events", tags=["quotation-events"])
@@ -39,6 +43,18 @@ def create_quotation_event_route(
     element_key: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    # El endpoint genérico se conserva para otros eventos, pero las aperturas
+    # deben cumplir las mismas reglas que el endpoint especializado.
+    if event_name == "section_opened":
+        section_key = normalize_section_key(section_key)
+        if section_key is None or not contact_belongs_to_quotation(
+            db, quotation_id, contact_id
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Sección inválida o contacto sin acceso a la cotización",
+            )
+
     event = create_quotation_event(
         db=db,
         quotation_id=quotation_id,
@@ -47,6 +63,28 @@ def create_quotation_event_route(
         section_key=section_key,
         element_key=element_key,
     )
+    return {"success": True, "data": serialize_quotation_event(event)}
+
+
+@router.post("/section-opened", status_code=201)
+def register_section_opened_route(
+    quotation_id: int = Form(...),
+    contact_id: int = Form(...),
+    section_key: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Registra una apertura de sección que sí participa en el ranking."""
+    event = register_section_opened(
+        db=db,
+        quotation_id=quotation_id,
+        contact_id=contact_id,
+        section_key=section_key,
+    )
+    if event is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Sección inválida o contacto sin acceso a la cotización",
+        )
     return {"success": True, "data": serialize_quotation_event(event)}
 
 
@@ -78,6 +116,20 @@ def get_quotation_contacts_events_route(
         include_inactive=include_inactive,
     )
     return {"success": True, "data": result}
+
+
+@router.get("/{quotation_id}/ranking")
+def get_quotation_ranking_route(
+    quotation_id: int,
+    db: Session = Depends(get_db),
+    db_quote: Session = Depends(get_db_quote),
+):
+    ranking = get_quotation_ranking(
+        db=db,
+        db_quote=db_quote,
+        quotation_id=quotation_id,
+    )
+    return {"success": True, "data": ranking}
 
 
 @router.get("/{event_id}")

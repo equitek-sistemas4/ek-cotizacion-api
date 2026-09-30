@@ -93,6 +93,8 @@ def update_contact(
         contact.display_name = display_name
     if company is not None:
         contact.company = company
+    if position is not None:
+        contact.position = position
 
     db.commit()
     db.refresh(contact)
