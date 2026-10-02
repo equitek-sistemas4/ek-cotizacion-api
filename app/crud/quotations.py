@@ -136,7 +136,6 @@ def get_quotation_files(
     user_id: int,
     db_quote: Session,
 ) -> List[Dict[str, Any]]:
-    """Obtiene los archivos activos de una cotizacion cargados por un usuario."""
     stmt = (
         select(
             ncrm_arch.idarch,
@@ -396,7 +395,6 @@ def get_quotation_company_contacts(
     quotation_id: int,
     db_quote: Session,
 ) -> List[Dict[str, Any]]:
-    """Obtiene los contactos activos de la empresa asociada a una cotización."""
     stmt = (
         select(
             empresa_contacto.titulo,
@@ -591,7 +589,6 @@ def get_equipment_quotation_info(
     db_quote: Session,
     equipment_id: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """Obtiene el hardware activo de una cotización y sus datos de proyecto."""
     scope_summary = (
         select(
             ncrm_alcval.fk_idcequipo.label("equipment_id"),

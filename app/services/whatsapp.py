@@ -356,16 +356,14 @@ class WhatsAppService:
             raise RuntimeError(f"Error al obtener grupos activos de WhatsApp: {response_data['error']}")
 
         return response_data
+
     
-    
-    # Funcion para verificar el webhook
     def verify_webhook(self, mode: str, token: str, challenge: str) -> str:
         if mode == "subscribe" and token == settings.whatsapp_verify_token:
             return challenge
         raise RuntimeError("Token de verificación inválido")
 
 
-    # Funcion para procesar los eventos recibidos en el webhook
     def process_webhook(self, payload: dict) -> dict:
         return {
             "status": "received",

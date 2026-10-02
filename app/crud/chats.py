@@ -59,7 +59,12 @@ def delete_chat(db: Session, chat_id: int) -> bool:
     return True
 
 
-def get_all_chats(db: Session, user_id: Optional[int] = None, search: Optional[str] = None) -> List[Chats]:
+def get_all_chats(
+    db: Session,
+    user_id: Optional[int] = None,
+    search: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> List[Chats]:
     query = db.query(Chats).filter(Chats.status == 1, Chats.user_id == user_id) if user_id is not None else db.query(Chats).filter(Chats.status == 1)
 
     if search and search.strip():
@@ -71,7 +76,11 @@ def get_all_chats(db: Session, user_id: Optional[int] = None, search: Optional[s
             )
         )
 
-    return query.order_by(Chats.created_at.desc()).all()
+    query = query.order_by(Chats.created_at.desc())
+    if limit is not None:
+        query = query.limit(limit)
+
+    return query.all()
 
 
 def get_chat_with_members(db: Session, chat_id: int) -> Optional[Dict]:

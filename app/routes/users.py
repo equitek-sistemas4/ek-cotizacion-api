@@ -127,7 +127,6 @@ async def update_alert_settings_route(
     supervisor_user_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
-    """Configura el teléfono y responsable usados solo por alertas backend."""
     phone_number = clean_user_phone_number(whatsapp_phone_number)
     if not phone_number:
         return {"success": False, "message": "whatsapp_phone_number es requerido"}

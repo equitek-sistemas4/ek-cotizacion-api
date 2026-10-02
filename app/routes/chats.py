@@ -13,6 +13,7 @@ from app.crud.chats import (
 )
 from app.crud.chats_messages import get_messages
 from app.crud.chats_members import add_member_to_chat, update_token_member_chat
+from app.crud.quotation_events import get_quotation_rankings
 from app.crud.messages import (
     get_chat_messages as get_chat_messages_from_db,
     chat_send_and_save_text_message,
@@ -207,8 +208,20 @@ async def get_all_chats_route(
     after: Optional[str] = Query(None),
     before: Optional[str] = Query(None),
     db: Session = Depends(get_db),
+    db_quote: Session = Depends(get_db_quote),
 ):
-    chats = get_all_chats_db(db, user_id=user_id, search=search)
+    chats = get_all_chats_db(
+        db,
+        user_id=user_id,
+        search=search,
+        limit=limit,
+    )
+    rankings_by_quotation_id = get_quotation_rankings(
+        db=db,
+        db_quote=db_quote,
+        quotation_ids=[chat.quotation_id for chat in chats],
+        include_sections=False,
+    )
     return {
         "success": True,
         "data": [
@@ -217,6 +230,7 @@ async def get_all_chats_route(
                 "name": chat.name,
                 "description": chat.description,
                 "quotation_id": chat.quotation_id,
+                "ranking": rankings_by_quotation_id[chat.quotation_id],
                 "status": chat.status,
                 "created_at": chat.created_at.isoformat() if chat.created_at else None,
             }

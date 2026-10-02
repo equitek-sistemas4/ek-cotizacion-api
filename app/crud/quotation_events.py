@@ -1,7 +1,7 @@
 import re
 import unicodedata
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,6 @@ SECTION_VALUES = {
 
 
 def _normalize_text(value: Optional[str]) -> str:
-    """Normaliza puestos y claves para compararlos sin acentos ni formato."""
     normalized = unicodedata.normalize("NFKD", value or "")
     normalized = "".join(
         character for character in normalized if not unicodedata.combining(character)
@@ -32,7 +31,6 @@ def _normalize_text(value: Optional[str]) -> str:
 
 
 def normalize_section_key(section_key: Optional[str]) -> Optional[str]:
-    """Devuelve la clave canónica de una sección o ``None`` si no es válida."""
     normalized = _normalize_text(section_key)
     aliases = {
         "inicio": "inicio",
@@ -52,7 +50,6 @@ def normalize_section_key(section_key: Optional[str]) -> Optional[str]:
 
 
 def get_role_score(position: Optional[str]) -> int:
-    """Obtiene el puntaje del puesto; vacío o desconocido vale un punto."""
     normalized = _normalize_text(position)
 
     if any(term in normalized for term in ("dueno", "director general", "directivo")):
@@ -67,7 +64,6 @@ def get_role_score(position: Optional[str]) -> int:
 
 
 def get_quotation_final_total(quotation_id: int, db_quote: Session) -> Decimal:
-    """Obtiene el total cotizado final almacenado en ``ncrm_coti.costo``."""
     total = (
         db_quote.query(ncrm_coti.costo)
         .filter(ncrm_coti.idcoti == quotation_id)
@@ -102,7 +98,6 @@ def contact_belongs_to_quotation(
     quotation_id: int,
     contact_id: int,
 ) -> bool:
-    """Comprueba que el contacto tenga acceso a la cotización indicada."""
     return (
         db.query(ChatMembers.id)
         .join(Chats, Chats.id == ChatMembers.chat_id)
@@ -123,7 +118,6 @@ def register_section_opened(
     contact_id: int,
     section_key: str,
 ) -> Optional[QuotationEvent]:
-    """Registra una apertura válida únicamente para un contacto autorizado."""
     canonical_section_key = normalize_section_key(section_key)
     if canonical_section_key is None:
         return None
@@ -144,6 +138,10 @@ def get_quotation_ranking(
     db_quote: Session,
     quotation_id: int,
 ) -> dict:
+    return get_quotation_rankings(db, db_quote, [quotation_id])[quotation_id]
+
+
+def _empty_quotation_ranking(quotation_id: int) -> dict:
     sections = []
     sections_by_key = {}
     for section_key, metadata in SECTION_VALUES.items():
@@ -158,11 +156,35 @@ def get_quotation_ranking(
         sections.append(section)
         sections_by_key[section_key] = section
 
+    return {
+        "quotation_id": quotation_id,
+        "sections": sections,
+        "sections_by_key": sections_by_key,
+        "total_openings": 0,
+        "weighted_openings_total": 0,
+    }
+
+
+def get_quotation_rankings(
+    db: Session,
+    db_quote: Session,
+    quotation_ids: Iterable[int],
+    include_sections: bool = True,
+) -> Dict[int, dict]:
+    unique_quotation_ids = list(dict.fromkeys(quotation_ids))
+    if not unique_quotation_ids:
+        return {}
+
+    rankings = {
+        quotation_id: _empty_quotation_ranking(quotation_id)
+        for quotation_id in unique_quotation_ids
+    }
+
     rows = (
         db.query(QuotationEvent, Contact)
         .join(Contact, Contact.id == QuotationEvent.contact_id)
         .filter(
-            QuotationEvent.quotation_id == quotation_id,
+            QuotationEvent.quotation_id.in_(unique_quotation_ids),
             QuotationEvent.status == 1,
             QuotationEvent.event_name == SECTION_OPENED_EVENT,
         )
@@ -175,7 +197,7 @@ def get_quotation_ranking(
         if section_key is None:
             continue
 
-        key = (contact.id, section_key)
+        key = (event.quotation_id, contact.id, section_key)
         detail = openings_by_contact_and_section.setdefault(
             key,
             {
@@ -189,10 +211,11 @@ def get_quotation_ranking(
         )
         detail["openings"] += 1
 
-    weighted_openings_total = 0
-    total_openings = 0
-    for detail in openings_by_contact_and_section.values():
-        section = sections_by_key[detail["section_key"]]
+    for (quotation_id, _contact_id, _section_key), detail in (
+        openings_by_contact_and_section.items()
+    ):
+        ranking = rankings[quotation_id]
+        section = ranking["sections_by_key"][detail["section_key"]]
         detail["weighted_openings"] = (
             (section["section_value"] + detail["role_score"])
             * detail["openings"]
@@ -200,26 +223,39 @@ def get_quotation_ranking(
         section["contacts"].append(detail)
         section["total_openings"] += detail["openings"]
         section["weighted_total"] += detail["weighted_openings"]
-        total_openings += detail["openings"]
-        weighted_openings_total += detail["weighted_openings"]
+        ranking["total_openings"] += detail["openings"]
+        ranking["weighted_openings_total"] += detail["weighted_openings"]
 
-    for section in sections:
-        section["contacts"].sort(key=lambda contact: contact["contact_name"] or "")
+    quotation_totals = dict(
+        db_quote.query(ncrm_coti.idcoti, ncrm_coti.costo)
+        .filter(ncrm_coti.idcoti.in_(unique_quotation_ids))
+        .all()
+    )
 
-    quotation_total = get_quotation_final_total(quotation_id, db_quote)
-    ranking = (Decimal(weighted_openings_total) * quotation_total) / Decimal("1000000")
+    for quotation_id, ranking_data in rankings.items():
+        for section in ranking_data["sections"]:
+            section["contacts"].sort(
+                key=lambda contact: contact["contact_name"] or ""
+            )
 
-    return {
-        "quotation_id": quotation_id,
-        "sections": sections,
-        "total_openings": total_openings,
-        "weighted_openings_total": weighted_openings_total,
-        "quotation_final_total": float(quotation_total),
-        "ranking": float(ranking),
-        "ranking_rounded": int(
-            ranking.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        ),
-    }
+        quotation_total = Decimal(str(quotation_totals.get(quotation_id) or 0))
+        ranking = (
+            Decimal(ranking_data["weighted_openings_total"]) * quotation_total
+        ) / Decimal("1000000")
+        ranking_data.update(
+            {
+                "quotation_final_total": float(quotation_total),
+                "ranking": float(ranking),
+                "ranking_rounded": int(
+                    ranking.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                ),
+            }
+        )
+        ranking_data.pop("sections_by_key")
+        if not include_sections:
+            ranking_data.pop("sections")
+
+    return rankings
 
 
 def get_quotation_event_by_id(
@@ -254,7 +290,6 @@ def get_contact_with_quotation_events(
     quotation_id: int,
     include_inactive: bool = True,
 ) -> dict:
-    """Obtiene contactos de los chats de una cotizacion y sus eventos."""
     rows = (
         db.query(Chats, Contact)
         .join(ChatMembers, ChatMembers.chat_id == Chats.id)
@@ -344,7 +379,6 @@ def update_quotation_event(
 
 
 def delete_quotation_event(db: Session, event_id: int) -> bool:
-    """Baja lógica para conservar el historial de analítica."""
     event = get_quotation_event_by_id(db, event_id, include_inactive=True)
     if event is None:
         return False

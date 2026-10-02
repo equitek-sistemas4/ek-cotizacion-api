@@ -33,7 +33,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def client_waiting_alert_worker() -> None:
-    """Worker ligero del proceso API; no depende de conexiones del frontend."""
     service = ClientWaitingAlertService()
     while True:
         db = SessionLocal()
@@ -53,14 +52,12 @@ client_waiting_alert_task = None
 
 @app.on_event("startup")
 async def start_client_waiting_alert_worker():
-    """Inicia el worker sin usar APIs introducidas después de Python 3.6."""
     global client_waiting_alert_task
     client_waiting_alert_task = asyncio.ensure_future(client_waiting_alert_worker())
 
 
 @app.on_event("shutdown")
 async def stop_client_waiting_alert_worker():
-    """Cancela ordenadamente el worker cuando el proceso se detiene."""
     if client_waiting_alert_task is not None:
         client_waiting_alert_task.cancel()
         with suppress(asyncio.CancelledError):

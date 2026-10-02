@@ -422,7 +422,6 @@ def search_messages_by_phone_number(
     phone_number: str,
     search: str,
 ) -> List[Messages]:
-    """Busca texto dentro del historial de un número de WhatsApp."""
     search_term = f"%{search.strip()}%"
     return (
         db.query(Messages)

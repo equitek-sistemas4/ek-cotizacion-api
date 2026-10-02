@@ -1,5 +1,3 @@
-"""Procesamiento backend para el SLA de conversaciones sin respuesta."""
-
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -32,12 +30,9 @@ def register_chat_message_for_sla(db: Session, message: ChatMessages) -> None:
     timestamp = message.created_at or datetime.now()
     if message.sender_type == "contact":
         chat.hora_ultimo_mensaje_entrante = timestamp
-        # Un mensaje nuevo abre o actualiza el mismo caso; no rearma alertas.
         return
 
     if message.sender_type == "user" and message.sender_id == chat.user_id:
-        # Un log individual puede haber sido dirigido al vendedor o a su
-        # supervisor. chat_id es el vínculo inequívoco para limpiar ambos.
         db.query(ClientWaitingAlertLog).filter(
             ClientWaitingAlertLog.chat_id == chat.id
         ).delete(synchronize_session=False)
@@ -61,13 +56,10 @@ class ClientWaitingAlertService:
         self.whatsapp = whatsapp or WhatsAppService()
 
     async def process_due_alerts(self, db: Session) -> int:
-        """Envía alertas vencidas. El bloqueo SQL evita duplicados entre workers."""
         now = datetime.now()
         due_chats = (
             db.query(Chats)
             .filter(Chats.status == 1, Chats.hora_ultimo_mensaje_entrante.isnot(None))
-            # No se usa SKIP LOCKED para mantener compatibilidad con MySQL 5.7.
-            # Un segundo worker espera el commit y después observa el nuevo estado.
             .with_for_update()
             .all()
         )
@@ -112,8 +104,6 @@ class ClientWaitingAlertService:
                 if await self._send_individual(db, chat, recipient_id, phone_number, alert_type, now):
                     sent += 1
 
-            # Un único resumen por destinatario y corrida; los chats incluidos se
-            # consideran alertados para respetar "una alerta por conversación".
             if summarized and await self._send_summary(
                 db, recipient_id, phone_number, summarized, now
             ):
@@ -153,7 +143,7 @@ class ClientWaitingAlertService:
         setting = db.get(UserAlertSettings, user_id)
         if setting and setting.status == 1:
             return setting.whatsapp_phone_number
-        # Compatibilidad para instalaciones en que users.id coincide con el id VMAPS.
+
         user = db.get(Users, user_id)
         return user.phone_number if user and user.status == 1 else None
 

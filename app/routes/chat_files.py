@@ -39,7 +39,6 @@ async def send_file_message(
     text: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    """Guarda una imagen o PDF y lo asocia a un nuevo mensaje del chat."""
     sender_type = sender_type.strip().lower()
     if sender_type not in {"user", "contact"}:
         raise HTTPException(400, "sender_type debe ser user o contact")

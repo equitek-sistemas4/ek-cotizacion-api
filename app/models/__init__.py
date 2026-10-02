@@ -974,12 +974,6 @@ class Users(Base):
 
 
 class UserAlertSettings(Base):
-    """Destino WhatsApp y responsable directo para usuarios de VMAPS.
-
-    Los ids corresponden a ``Chats.user_id`` / ``Usuarios.idusuario``. Mantener
-    esta configuración separada evita asumir que el id de ``users`` local es el
-    mismo que el de VMAPS.
-    """
     __tablename__ = "user_alert_settings"
 
     user_id = Column(Integer, primary_key=True)

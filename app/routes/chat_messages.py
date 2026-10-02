@@ -209,7 +209,6 @@ async def search_messages_by_phone_number_route(
     search: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
 ):
-    """Busca mensajes de WhatsApp por texto para un número telefónico."""
     messages = search_messages_by_phone_number(db, phone_number, search)
     return {
         "success": True,

@@ -43,8 +43,6 @@ def create_quotation_event_route(
     element_key: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    # El endpoint genérico se conserva para otros eventos, pero las aperturas
-    # deben cumplir las mismas reglas que el endpoint especializado.
     if event_name == "section_opened":
         section_key = normalize_section_key(section_key)
         if section_key is None or not contact_belongs_to_quotation(
@@ -73,7 +71,6 @@ def register_section_opened_route(
     section_key: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    """Registra una apertura de sección que sí participa en el ranking."""
     event = register_section_opened(
         db=db,
         quotation_id=quotation_id,
