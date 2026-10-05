@@ -422,7 +422,14 @@ def get_quotation_company_contacts(
         )
         .outerjoin(
             empresa_contacto,
-            ncrm_prospecto.fk_idempresa == empresa_contacto.fk_idempresa,
+            or_(
+                ncrm_prospecto.fk_idempresa == empresa_contacto.fk_idempresa,
+                empresa_contacto.fk_idempresa.in_(
+                    select(empresa.idempresa).where(
+                        empresa.empresa.ilike("%equitek%")
+                    )
+                ),
+            ),
         )
         .outerjoin(
             empresa, empresa.idempresa == empresa_contacto.fk_idempresa
