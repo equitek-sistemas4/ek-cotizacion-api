@@ -26,7 +26,7 @@ from app.crud.contacts import (
 )
 from app.config import settings
 from app.database import get_db, get_db_quote, get_db_vmaps
-from app.models import Chats, empresa, empresa_contacto
+from app.models import ChatMembers, Chats, Contact, empresa, empresa_contacto
 from app.schemas.chat_messages import serialize_chat_message
 from app.services.whatsapp import WhatsAppService
 from app.utils.utils import decode_access_token, serialize_message
@@ -36,6 +36,29 @@ router = APIRouter(prefix="/chats", tags=["chats"])
 internal_router = APIRouter(prefix="/chats", tags=["chats"])
 service = WhatsAppService()
 DEFAULT_CHAT_MEMBER_CONTACT_ID = 1
+
+
+def get_chat_members_access_data(db: Session, chat_id: int):
+    members = (
+        db.query(ChatMembers, Contact)
+        .outerjoin(Contact, ChatMembers.contact_id == Contact.id)
+        .filter(ChatMembers.chat_id == chat_id)
+        .order_by(ChatMembers.created_at.asc())
+        .all()
+    )
+
+    return [
+        {
+            "name": contact.name if contact else None,
+            "access_url": (
+                f"{settings.frontend_url.rstrip('/')}/contact-chat/{member.access_code}"
+                #f"{CONTACT_CHAT_URL}/{member.access_code}"
+                if member.access_code
+                else None
+            ),
+        }
+        for member, contact in members
+    ]
 
 
 def validate_internal_chat_api_key(
@@ -142,6 +165,7 @@ async def create_chat_from_quotation_route(
             "redirect_url": redirect_url,
             "chat_id": existing_chat.id,
             "quotation_id": existing_chat.quotation_id,
+            "quotation_contacts": get_chat_members_access_data(db, existing_chat.id),
             "success": True,
         }
 
@@ -196,6 +220,7 @@ async def create_chat_from_quotation_route(
         "redirect_url": redirect_url,
         "chat_id": chat.id,
         "quotation_id": quotation_id,
+        "quotation_contacts": get_chat_members_access_data(db, chat.id),
         "success": True,
     }
 
