@@ -7,11 +7,17 @@ from app.config import settings
 from app.models import ChatMembers, ChatMessages, Chats, Messages, Contact
 from app.services.whatsapp import WhatsAppService
 from app.services.client_waiting_alerts import register_chat_message_for_sla
-from app.utils.utils import get_whatsapp_message_id, normalize_phone_number
+from app.utils.utils import (
+    PhoneNumberValidationError,
+    get_whatsapp_message_id,
+    normalize_phone_number,
+)
 
 
 def raise_message_http_exception(db: Session, exc: Exception) -> None:
     db.rollback()
+    if isinstance(exc, PhoneNumberValidationError):
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

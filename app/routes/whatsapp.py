@@ -17,7 +17,9 @@ from app.crud.messages import (
     send_and_save_template_message,
 )
 from app.utils.utils import (
+    PhoneNumberValidationError,
     build_incoming_message,
+    normalize_phone_number,
     serialize_message,
     validate_access_token,
 )
@@ -36,7 +38,14 @@ async def send_whatsapp_message(
     db: Session = Depends(get_db),
     _: dict = Depends(validate_access_token),
 ):
-    result, message = await send_and_save_text_message(db, service, to, text)
+    try:
+        phone_number = normalize_phone_number(to)
+    except PhoneNumberValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    result, message = await send_and_save_text_message(
+        db, service, phone_number, text
+    )
     await whatsapp_manager.broadcast_message(serialize_message(message))
 
     return {

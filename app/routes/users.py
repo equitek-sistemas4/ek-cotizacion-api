@@ -7,6 +7,7 @@ from app.crud.users import create_user, delete_user, get_all_users_vmaps, update
 from app.database import get_db, get_db_vmaps
 from app.models import UserAlertSettings
 from app.crud.users import clean_user_phone_number
+from app.utils.utils import PhoneNumberValidationError
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -26,7 +27,6 @@ def serialize_user(user) -> dict:
         "usuario": user.usuario,
         "name": user.nombres,
         "email": user.correo,
-        "phone_number": '',
         "status": user.estado,
         "created_at": user.fecha_registro.isoformat() if user.fecha_registro else None,
     }
@@ -61,13 +61,16 @@ async def create_user_route(
             "message": validation_error,
         }
 
-    user = create_user(
-        db,
-        name=name.strip(),
-        email=email.strip(),
-        password=password.strip(),
-        phone_number=phone_number.strip(),
-    )
+    try:
+        user = create_user(
+            db,
+            name=name.strip(),
+            email=email.strip(),
+            password=password.strip(),
+            phone_number=phone_number.strip(),
+        )
+    except PhoneNumberValidationError as exc:
+        return {"success": False, "message": str(exc)}
 
     return {
         "success": True,
@@ -84,13 +87,16 @@ async def update_user_route(
     phone_number: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    user = update_user(
-        db,
-        user_id=user_id,
-        name=name,
-        email=email,
-        phone_number=phone_number,
-    )
+    try:
+        user = update_user(
+            db,
+            user_id=user_id,
+            name=name,
+            email=email,
+            phone_number=phone_number,
+        )
+    except PhoneNumberValidationError as exc:
+        return {"success": False, "message": str(exc)}
 
     if user is None:
         return {
@@ -127,7 +133,10 @@ async def update_alert_settings_route(
     supervisor_user_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
-    phone_number = clean_user_phone_number(whatsapp_phone_number)
+    try:
+        phone_number = clean_user_phone_number(whatsapp_phone_number)
+    except PhoneNumberValidationError as exc:
+        return {"success": False, "message": str(exc)}
     if not phone_number:
         return {"success": False, "message": "whatsapp_phone_number es requerido"}
 

@@ -5,11 +5,11 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.models import Users, Usuarios, Usuarios_tipos
-from app.utils.utils import hash_password
+from app.utils.utils import hash_password, normalize_phone_number
 
 
 def clean_user_phone_number(phone_number: str) -> str:
-    return phone_number.replace("+", "").strip()
+    return normalize_phone_number(phone_number)
 
 
 def get_all_users(db: Session) -> List[Users]:

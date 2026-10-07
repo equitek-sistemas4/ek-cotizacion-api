@@ -11,11 +11,16 @@ from app.models import (
     Contact_requests,
     empresa_contacto,
 )
-from app.utils.utils import create_access_token, encrypt_token, generate_alphanumeric_code
+from app.utils.utils import (
+    create_access_token,
+    encrypt_token,
+    generate_alphanumeric_code,
+    normalize_phone_number,
+)
 
 
 def clean_contact_phone_number(phone_number: str) -> str:
-    return phone_number.replace("+", "").strip()
+    return normalize_phone_number(phone_number)
 
 
 def create_contact(

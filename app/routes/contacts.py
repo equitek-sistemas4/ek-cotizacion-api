@@ -17,6 +17,7 @@ from app.crud.contacts import (
     update_contact,
 )
 from app.database import get_db
+from app.utils.utils import PhoneNumberValidationError
 
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
@@ -168,15 +169,18 @@ async def create_contact_route(
     fk_idempresa: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
-    contact = create_contact(
-        db,
-        name=name,
-        phone_number=phone_number,
-        display_name=display_name,
-        company=company,
-        idempresa_contacto=idempresa_contacto,
-        fk_idempresa=fk_idempresa
-    )
+    try:
+        contact = create_contact(
+            db,
+            name=name,
+            phone_number=phone_number,
+            display_name=display_name,
+            company=company,
+            idempresa_contacto=idempresa_contacto,
+            fk_idempresa=fk_idempresa
+        )
+    except PhoneNumberValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return {
         "success": True,
@@ -198,18 +202,21 @@ async def create_contact_request_route(
     contact_email: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    contact_request = create_contact_request(
-        db,
-        chat_id=chat_id,
-        contact_name=contact_name,
-        contact_phone_number=contact_phone_number,
-        contact_display_name=contact_display_name,
-        contact_company=contact_company,
-        contact_position=contact_position,
-        idempresa_contacto=idempresa_contacto,
-        fk_idempresa=fk_idempresa,
-        contact_email=contact_email,
-    )
+    try:
+        contact_request = create_contact_request(
+            db,
+            chat_id=chat_id,
+            contact_name=contact_name,
+            contact_phone_number=contact_phone_number,
+            contact_display_name=contact_display_name,
+            contact_company=contact_company,
+            contact_position=contact_position,
+            idempresa_contacto=idempresa_contacto,
+            fk_idempresa=fk_idempresa,
+            contact_email=contact_email,
+        )
+    except PhoneNumberValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return {
         "success": True,
@@ -239,14 +246,17 @@ async def update_contact_route(
     company: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    contact = update_contact(
-        db,
-        contact_id=contact_id,
-        name=name,
-        phone_number=phone_number,
-        display_name=display_name,
-        company=company,
-    )
+    try:
+        contact = update_contact(
+            db,
+            contact_id=contact_id,
+            name=name,
+            phone_number=phone_number,
+            display_name=display_name,
+            company=company,
+        )
+    except PhoneNumberValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if contact is None:
         return {

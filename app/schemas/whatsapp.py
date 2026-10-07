@@ -2,10 +2,14 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, validator
 
+from app.utils.utils import normalize_phone_number
+
 
 class WhatsAppSendRequest(BaseModel):
     to: str = Field(..., description="Numero de destino en formato E.164, por ejemplo: +573001112233")
     text: str = Field(..., min_length=1, description="Mensaje de texto a enviar")
+
+    _normalize_to = validator("to", allow_reuse=True)(normalize_phone_number)
 
 
 class TemplateLanguage(BaseModel):
@@ -44,12 +48,16 @@ class WhatsAppTemplateRequest(BaseModel):
     type: str = Field(..., description="Tipo de mensaje, ej: template")
     template: TemplateInfo = Field(..., description="Informacion de la plantilla")
 
+    _normalize_to = validator("to", allow_reuse=True)(normalize_phone_number)
+
 
 class WhatsAppTemplateRequestSimple(BaseModel):
     to: str = Field(..., description="Numero de destino en formato E.164")
     template_name: str = Field(..., description="Nombre de la plantilla aprobada en Meta")
     parameters: Optional[List[str]] = Field(None, description="Parametros para la plantilla, ej: ['Juan', '15:00']")
     language_code: Optional[str] = Field("en_US", description="Codigo de idioma de la plantilla (ej: en_US, es_ES, es)")
+
+    _normalize_to = validator("to", allow_reuse=True)(normalize_phone_number)
 
 
 class WhatsAppWebhookResponse(BaseModel):

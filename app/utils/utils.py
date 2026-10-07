@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import string
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -187,14 +188,44 @@ def validate_access_token(authorization: Optional[str] = Header(None)) -> dict:
     return decode_access_token(token)
 
 
+class PhoneNumberValidationError(ValueError):
+    """Raised when a value cannot be converted to a WhatsApp recipient number."""
+
+
 def normalize_phone_number(phone_number: str) -> str:
-    normalized_phone_number = "".join(
-        character for character in str(phone_number).strip() if character.isdigit()
-    )
+    raw_phone_number = str(phone_number or "").strip()
+    if not raw_phone_number:
+        raise PhoneNumberValidationError("El numero telefonico es requerido")
+
+    normalized_phone_number = ""
+    for character in raw_phone_number:
+        if character.isdigit():
+            normalized_phone_number += str(unicodedata.digit(character))
+        elif character.isalpha():
+            raise PhoneNumberValidationError(
+                "El numero telefonico solo puede contener digitos y separadores"
+            )
+
     if normalized_phone_number.startswith("00"):
         normalized_phone_number = normalized_phone_number[2:]
+
+    default_country_code = str(settings.whatsapp_default_country_code or "").strip()
+    if not default_country_code.isdigit():
+        raise PhoneNumberValidationError(
+            "WHATSAPP_DEFAULT_COUNTRY_CODE debe contener solo digitos"
+        )
+
+    if len(normalized_phone_number) == 10:
+        normalized_phone_number = f"{default_country_code}{normalized_phone_number}"
+
     if normalized_phone_number.startswith("52") and not normalized_phone_number.startswith("521"):
-        return f"521{normalized_phone_number[2:]}"
+        normalized_phone_number = f"521{normalized_phone_number[2:]}"
+
+    if not 8 <= len(normalized_phone_number) <= 15:
+        raise PhoneNumberValidationError(
+            "El numero telefonico debe tener entre 8 y 15 digitos, incluido el codigo de pais"
+        )
+
     return normalized_phone_number
 
 

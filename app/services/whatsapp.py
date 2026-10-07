@@ -5,6 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.config import settings
+from app.utils.utils import normalize_phone_number
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,10 @@ class WhatsAppService:
         if not settings.whatsapp_access_token:
             raise RuntimeError("WHATSAPP_ACCESS_TOKEN no está configurado")
 
+        phone_number = normalize_phone_number(to)
         payload = {
             "messaging_product": "whatsapp",
-            "to": to,
+            "to": phone_number,
             "type": "text",
             "text": {"body": text},
         }
@@ -79,7 +81,7 @@ class WhatsAppService:
         if not settings.whatsapp_access_token:
             raise RuntimeError("WHATSAPP_ACCESS_TOKEN no está configurado")
 
-        phone_number = to.replace("+", "") if to.startswith("+") else to
+        phone_number = normalize_phone_number(to)
 
         template_components = []
         if components:
@@ -204,9 +206,10 @@ class WhatsAppService:
         if not settings.whatsapp_access_token:
             raise RuntimeError("WHATSAPP_ACCESS_TOKEN no estÃ¡ configurado")
 
+        phone_number = normalize_phone_number(to)
         payload = {
             "messaging_product": "whatsapp",
-            "to": to,
+            "to": phone_number,
             "type": media_type,
             media_type: {
                 "id": media_id,
@@ -292,7 +295,7 @@ class WhatsAppService:
         payload = {
             "messaging_product": "whatsapp",
             "participants": [
-                {"user": participant.replace("+", "").strip()}
+                {"user": normalize_phone_number(participant)}
                 for participant in participants
             ],
         }
@@ -343,7 +346,7 @@ class WhatsAppService:
                 headers=self._headers(),
                 params=params,
             )
-
+        
         response_data = response.json()
 
         if response.status_code >= 400:
