@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.crud.contacts import (
     create_contact,
+    create_direct_contact,
     create_contact_request,
     delete_contact,
     approve_contact_request,
@@ -14,9 +15,10 @@ from app.crud.contacts import (
     reject_contact_request,
     get_all_contact_requests,
     get_all_contacts,
+    get_active_companies,
     update_contact,
 )
-from app.database import get_db
+from app.database import get_db, get_db_quote
 from app.utils.utils import PhoneNumberValidationError
 
 
@@ -43,6 +45,24 @@ async def get_all_contacts_route(db: Session = Depends(get_db)):
     return {
         "success": True,
         "data": [serialize_contact(contact) for contact in contacts],
+    }
+
+
+@router.get("/companies")
+async def get_active_companies_route(db_quote: Session = Depends(get_db_quote)):
+    companies = get_active_companies(db_quote)
+    return {
+        "success": True,
+        "data": [
+            {
+                "idempresa": company.idempresa,
+                "empresa": company.empresa,
+                "correo": company.correo,
+                "pagina_web": company.pagina_web,
+                "estado": company.estado,
+            }
+            for company in companies
+        ],
     }
 
 
@@ -186,6 +206,41 @@ async def create_contact_route(
         "success": True,
         "message": "Contacto creado",
         "data": serialize_contact(contact),
+    }
+
+
+@router.post("/create-direct")
+async def create_direct_contact_route(
+    name: str = Form(...),
+    phone_number: str = Form(...),
+    display_name: Optional[str] = Form(None),
+    email: str = Form(...),
+    id_empresa: int = Form(...),
+    position: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = create_direct_contact(
+            db=db,
+            name=name,
+            phone_number=phone_number,
+            display_name=display_name,
+            email=email,
+            id_empresa=id_empresa,
+            position=position,
+        )
+    except PhoneNumberValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return {
+        "success": True,
+        "message": "Contacto creado",
+        "data": {
+            "contact": serialize_contact(result["contact"]),
+            "idempresa_contacto": result["idempresa_contacto"],
+        },
     }
 
 

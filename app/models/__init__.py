@@ -492,8 +492,12 @@ class usuario_personal(Base_quote):
     __tablename__ = "usuario_personal"
 
     id_personal = Column(Integer, primary_key=True, index=True)
-    nick = Column(String(255), nullable=True)
-    ap_paterno = Column(String(255), nullable=True)
+    nombre = Column(String(100), nullable=False)
+    nick = Column(String(150), nullable=True)
+    ap_paterno = Column(String(100), nullable=True)
+    ap_materno = Column(String(100), nullable=True)
+    tel = Column(String(20), nullable=False)
+    cel = Column(String(20), nullable=False)
 
 
 class ncrm_cotiext(Base_quote):

@@ -9,6 +9,7 @@ from app.models import (
     Chats,
     Contact,
     Contact_requests,
+    empresa,
     empresa_contacto,
 )
 from app.utils.utils import (
@@ -46,6 +47,81 @@ def create_contact(
     db.commit()
     db.refresh(contact)
     return contact
+
+
+def create_direct_contact(
+    db: Session,
+    name: str,
+    phone_number: str,
+    display_name: Optional[str],
+    email: str,
+    id_empresa: int,
+    position: Optional[str],
+) -> Dict:
+    """Create a company contact and link it to an application contact."""
+    normalized_phone_number = clean_contact_phone_number(phone_number)
+    db_quote = SessionLocal_quote()
+
+    try:
+        company = (
+            db_quote.query(empresa.empresa)
+            .filter(empresa.idempresa == id_empresa)
+            .scalar()
+        )
+        if company is None:
+            raise ValueError("Empresa no encontrada")
+
+        company_contact = empresa_contacto(
+            nombre=name,
+            titulo=display_name,
+            funcion=position,
+            tel_movil=normalized_phone_number,
+            email=email,
+            fk_idempresa=id_empresa,
+            contacto_estado=1,
+        )
+        db_quote.add(company_contact)
+        db_quote.flush()
+        idempresa_contacto = company_contact.idempresa_contacto
+        db_quote.commit()
+
+        contact = (
+            db.query(Contact)
+            .filter(Contact.phone_number == normalized_phone_number)
+            .first()
+        )
+        if contact is None:
+            contact = Contact(
+                name=name,
+                phone_number=normalized_phone_number,
+                display_name=display_name,
+                company=company,
+                position=position,
+                idempresa_contacto=idempresa_contacto,
+                fk_idempresa=id_empresa,
+            )
+            db.add(contact)
+        else:
+            contact.name = name
+            contact.display_name = display_name
+            contact.company = company
+            contact.position = position
+            contact.idempresa_contacto = idempresa_contacto
+            contact.fk_idempresa = id_empresa
+
+        db.commit()
+        db.refresh(contact)
+    except Exception:
+        db.rollback()
+        db_quote.rollback()
+        raise
+    finally:
+        db_quote.close()
+
+    return {
+        "contact": contact,
+        "idempresa_contacto": idempresa_contacto,
+    }
 
 
 def create_contact_request(
@@ -145,6 +221,15 @@ def delete_contact(db: Session, contact_id: int):
 
 def get_all_contacts(db: Session) -> List[Contact]:
     return db.query(Contact).order_by(Contact.created_at.desc()).all()
+
+
+def get_active_companies(db_quote: Session) -> List[empresa]:
+    return (
+        db_quote.query(empresa)
+        .filter(empresa.estado == 1)
+        .order_by(empresa.empresa.asc())
+        .all()
+    )
 
 
 def get_all_contact_requests(db: Session, status: str) -> List[Dict]:

@@ -249,6 +249,7 @@ def get_quotation_info(quotation_id: int, db_quote: Session) -> Optional[Dict[st
             ncrm_cotiext.fk_idcoti.label("idcoti"),
             func.sum(ncrm_cotiext.costoe).label("total_costoe"),
         )
+        .where(ncrm_cotiext.estado == 1)
         .group_by(ncrm_cotiext.fk_idcoti)
         .subquery()
     )
@@ -535,7 +536,10 @@ def get_quotation_extras(
             ncrm_cotiext.fecha,
             ncrm_cotiext.estado,
         )
-        .where(ncrm_cotiext.fk_idcoti == quotation_id)
+        .where(
+            ncrm_cotiext.fk_idcoti == quotation_id,
+            ncrm_cotiext.estado == 1,
+        )
         .order_by(ncrm_cotiext.idextra)
     )
 
@@ -674,6 +678,30 @@ def get_equipment_quotation_info(
         stmt = stmt.where(ncrm_equipos.idcequipos == equipment_id)
 
     equipment = [dict(row) for row in db_quote.execute(stmt).mappings().all()]
+    quotation_equipment_ids = {
+        item["idcequipos"] for item in equipment if item["idcequipos"] is not None
+    }
+    improvements_by_equipment: Dict[int, List[str]] = {}
+    if quotation_equipment_ids:
+        improvements_stmt = (
+            select(
+                ncrm_alcval.fk_idcequipo,
+                ncrm_alcval.descripcion,
+            )
+            .where(
+                ncrm_alcval.estado == 1,
+                ncrm_alcval.fk_idcequipo.in_(quotation_equipment_ids),
+            )
+            .order_by(ncrm_alcval.idalcval)
+        )
+        for row in db_quote.execute(improvements_stmt).mappings().all():
+            improvements_by_equipment.setdefault(row["fk_idcequipo"], []).append(
+                row["descripcion"]
+            )
+
+    for item in equipment:
+        item["mejoras"] = improvements_by_equipment.get(item["idcequipos"], [])
+
     equipment_ids = {item["idequipo"] for item in equipment if item["idequipo"] is not None}
     if not equipment_ids:
         return equipment

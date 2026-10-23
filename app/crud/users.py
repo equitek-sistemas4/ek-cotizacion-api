@@ -2,9 +2,10 @@ import hashlib
 import hmac
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import Users, Usuarios, Usuarios_tipos
+from app.models import Users, Usuarios, Usuarios_tipos, usuarios, usuario_personal
 from app.utils.utils import hash_password, normalize_phone_number
 
 
@@ -79,6 +80,26 @@ def get_user_by_username_vmaps(db_vmaps: Session, username: str) -> Optional[Usu
     return user
 
 
+def get_user_by_username_quote(db_quote: Session, username: str):
+    """Obtiene las credenciales y datos personales del usuario de db_quote."""
+    return (
+        db_quote.query(
+            usuarios.idusuario,
+            usuarios.usuario,
+            usuarios.contrasena,
+            usuarios.estado,
+            usuarios.fk_idtipo,
+            usuario_personal.nombre,
+            usuario_personal.nick,
+            usuario_personal.ap_paterno,
+            usuario_personal.ap_materno,
+        )
+        .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
+        .filter(usuarios.usuario == username)
+        .first()
+    )
+
+
 def validate_user_password(user: Users, password: str) -> bool:
     return user.password == hash_password(password)
 
@@ -88,8 +109,29 @@ def validate_user_password_vmaps(user: Usuarios, password: str) -> bool:
     return hmac.compare_digest(user.contrasena or "", password_hash)
 
 
+def validate_user_password_quote(user, password: str) -> bool:
+    password_hash = hashlib.md5(password.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(user.contrasena or "", password_hash)
+
+
 def get_user_by_id(db: Session, user_id: int) -> Optional[Usuarios]:
     return db.query(Usuarios).filter(Usuarios.idusuario == user_id).first()
+
+
+def get_user_by_id_quote(db_quote: Session, user_id: int):
+    return (
+        db_quote.query(
+            usuarios.idusuario,
+            func.coalesce(
+                usuario_personal.nick,
+                usuario_personal.nombre,
+                usuarios.usuario,
+            ).label("nombres"),
+        )
+        .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
+        .filter(usuarios.idusuario == user_id)
+        .first()
+    )
 
 
 def update_user(

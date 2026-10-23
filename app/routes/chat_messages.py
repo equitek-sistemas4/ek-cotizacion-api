@@ -11,7 +11,7 @@ from app.crud.chats import get_chat_by_id
 from app.crud.chats_messages import get_messages, search_chat_messages
 from app.crud.contacts import get_contact_by_id
 from app.crud.messages import search_messages_by_phone_number
-from app.crud.users import get_user_by_id
+from app.crud.users import get_user_by_id_quote
 from app.models import ChatFiles, ChatMessages
 from app.routes.chat_websocket import manager
 from app.schemas.chat_messages import serialize_chat_message
@@ -42,7 +42,7 @@ async def create_chat_message_route(
     text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    db_vmaps: Session = Depends(get_db_vmaps),
+    db_quote: Session = Depends(get_db_quote),
 ):
     sender_type = sender_type.strip().lower()
     if sender_type not in ("user", "contact"):
@@ -75,7 +75,7 @@ async def create_chat_message_route(
                 },
             )
     else:
-        user = get_user_by_id(db_vmaps, sender_id)
+        user = get_user_by_id_quote(db_quote, sender_id)
         if user is None:
             return JSONResponse(
                 status_code=400,

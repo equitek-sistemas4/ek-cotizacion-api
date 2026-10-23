@@ -10,7 +10,6 @@ from app.services.whatsapp import WhatsAppService
 from app.routes.chat_websocket import whatsapp_manager
 from app.database import get_db
 from app.crud.messages import (
-    forward_incoming_message_to_chat_members,
     getAllMessages,
     get_received_messages as get_received_messages_from_db,
     send_and_save_text_message,
@@ -128,9 +127,6 @@ async def receive_webhook(
     saved_message_ids = []
     received_messages = 0
     received_statuses = 0
-    forwarded_messages = 0
-    forwarded_results = []
-    failed_forwards = 0
     incoming_messages = []
 
     try:
@@ -161,26 +157,6 @@ async def receive_webhook(
                     saved_messages += 1
                     incoming_messages.append(serialize_message(incoming_message))
 
-                    forward_result = await forward_incoming_message_to_chat_members(
-                        db,
-                        service,
-                        incoming_message.phone_number,
-                        incoming_message.text,
-                    )
-                    forwarded_messages += len(forward_result["sent"])
-                    failed_forwards += len(forward_result["failed"])
-                    forwarded_results.append({
-                        "incoming_message_id": incoming_message.id,
-                        "sender": forward_result["sender"],
-                        "chats": forward_result["chats"],
-                        "message": forward_result.get("message"),
-                        "forwarded_text": forward_result.get("forwarded_text"),
-                        "sent_count": len(forward_result["sent"]),
-                        "failed_count": len(forward_result["failed"]),
-                        "sent": forward_result["sent"],
-                        "failed": forward_result["failed"],
-                    })
-
         db.commit()
 
         for incoming_message in incoming_messages:
@@ -197,14 +173,12 @@ async def receive_webhook(
             )
 
         logger.warning(
-            "Webhook WhatsApp POST recibido: entries=%s messages=%s statuses=%s saved=%s ids=%s forwarded=%s failed_forwards=%s",
+            "Webhook WhatsApp POST recibido: entries=%s messages=%s statuses=%s saved=%s ids=%s",
             len(payload.get("entry", [])),
             received_messages,
             received_statuses,
             saved_messages,
             saved_message_ids,
-            forwarded_messages,
-            failed_forwards,
         )
 
         response = service.process_webhook(payload)
@@ -212,9 +186,6 @@ async def receive_webhook(
         response["received_statuses"] = received_statuses
         response["saved_messages"] = saved_messages
         response["saved_message_ids"] = saved_message_ids
-        response["forwarded_messages"] = forwarded_messages
-        response["failed_forwards"] = failed_forwards
-        response["forwarded_results"] = forwarded_results
 
         return response
     except Exception as exc:

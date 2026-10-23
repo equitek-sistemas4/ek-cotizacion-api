@@ -7,25 +7,29 @@ from sqlalchemy.orm import Session
 from app.crud.chats import get_chat_by_id
 from app.crud.chats_members import get_chat_member, update_token_member_chat
 from app.crud.contacts import get_contact_by_id
-from app.crud.users import get_user_by_email, get_user_by_username_vmaps, validate_user_password_vmaps
-from app.database import get_db, get_db_vmaps
+from app.crud.users import get_user_by_username_quote, validate_user_password_quote
+from app.database import get_db, get_db_quote
 from app.utils.utils import create_access_token, validate_access_token
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def serialize_vmaps_user(user) -> dict:
+def serialize_quote_user(user) -> dict:
     return {
         "id": user.idusuario,
         "username": user.usuario,
         "name": " ".join(
-            part for part in (user.nombres, user.apellido_paterno, user.apellido_materno) if part
+            part
+            for part in (user.nombre, user.ap_paterno, user.ap_materno)
+            if part
         ),
-        "email": user.correo,
+        # db_quote no cuenta con una columna de correo en estas tablas; el
+        # identificador de acceso es el mismo valor que recibe el login.
+        "email": user.usuario,
         "status": user.estado,
-        "idtipo_usuario": user.idtipo,
-        "tipo_usuario": user.tipo,
+        "idtipo_usuario": user.fk_idtipo,
+        "tipo_usuario": None,
     }
 
 
@@ -33,10 +37,10 @@ def serialize_vmaps_user(user) -> dict:
 async def login_route(
     email: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db_vmaps),
+    db: Session = Depends(get_db_quote),
 ):
     try:
-        user = get_user_by_username_vmaps(db, username=email.strip())
+        user = get_user_by_username_quote(db, username=email.strip())
         if user is None:
             return JSONResponse(
                 status_code=400,
@@ -46,7 +50,7 @@ async def login_route(
                 },
             )
 
-        if not validate_user_password_vmaps(user, password.strip()):
+        if not validate_user_password_quote(user, password.strip()):
             return JSONResponse(
                 status_code=400,
                 content={
@@ -57,14 +61,14 @@ async def login_route(
 
         access_token = create_access_token({
             "sub": str(user.idusuario),
-            "email": user.correo,
+            "email": user.usuario,
         })
 
         return {
             "success": True,
             "message": "Login correcto",
             "data": {
-                "user": serialize_vmaps_user(user),
+                "user": serialize_quote_user(user),
                 "access_token": access_token,
                 "token_type": "bearer",
             },
