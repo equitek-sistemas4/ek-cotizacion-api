@@ -81,7 +81,6 @@ def get_user_by_username_vmaps(db_vmaps: Session, username: str) -> Optional[Usu
 
 
 def get_user_by_username_quote(db_quote: Session, username: str):
-    """Obtiene las credenciales y datos personales del usuario de db_quote."""
     return (
         db_quote.query(
             usuarios.idusuario,
