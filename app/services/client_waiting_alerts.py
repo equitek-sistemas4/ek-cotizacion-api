@@ -30,6 +30,9 @@ def register_chat_message_for_sla(db: Session, message: ChatMessages) -> None:
     timestamp = message.created_at or datetime.now()
     if message.sender_type == "contact":
         chat.hora_ultimo_mensaje_entrante = timestamp
+        # Cada nuevo mensaje del cliente inicia un ciclo de alertas independiente.
+        chat.ultima_alerta_enviada = None
+        chat.etapa_escalamiento = 0
         return
 
     if message.sender_type == "user" and message.sender_id == chat.user_id:

@@ -21,6 +21,24 @@ def get_all_users_vmaps(db_vmaps: Session) -> List[Usuarios]:
     return db_vmaps.query(Usuarios).filter(Usuarios.estado == 1).order_by(Usuarios.fecha_registro.desc()).all()
 
 
+def get_all_users_quote(db_quote: Session):
+    return (
+        db_quote.query(
+            usuarios.idusuario,
+            usuarios.usuario,
+            usuarios.estado,
+            usuario_personal.nombre,
+            usuario_personal.nick,
+            usuario_personal.ap_paterno,
+            usuario_personal.ap_materno,
+        )
+        .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
+        .filter(usuarios.estado == 1)
+        .order_by(usuarios.idusuario.desc())
+        .all()
+    )
+
+
 def create_user(
     db: Session,
     name: str,
@@ -130,6 +148,30 @@ def get_user_by_id_quote(db_quote: Session, user_id: int):
         .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
         .filter(usuarios.idusuario == user_id)
         .first()
+    )
+
+
+def get_users_by_ids_quote(db_quote: Session, user_ids):
+    if not user_ids:
+        return []
+
+    return (
+        db_quote.query(
+            usuarios.idusuario,
+            usuarios.usuario,
+            usuarios.estado,
+            usuario_personal.nombre,
+            usuario_personal.ap_paterno.label("apellido_paterno"),
+            usuario_personal.ap_materno.label("apellido_materno"),
+            func.coalesce(
+                usuario_personal.nick,
+                usuario_personal.nombre,
+                usuarios.usuario,
+            ).label("nombres"),
+        )
+        .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
+        .filter(usuarios.idusuario.in_(user_ids))
+        .all()
     )
 
 

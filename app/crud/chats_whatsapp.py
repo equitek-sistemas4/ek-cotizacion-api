@@ -2,7 +2,8 @@ from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Chats_Whatsapp, Contact, Usuarios
+from app.crud.users import get_users_by_ids_quote
+from app.models import Chats_Whatsapp, Contact
 
 
 def create_chat_whatsapp(
@@ -31,7 +32,7 @@ def get_chat_whatsapp_by_id(
     )
 
 
-def get_all_chats_whatsapp(db: Session, db_vmaps: Session, user_id: Optional[int] = None) -> List[Dict]:
+def get_all_chats_whatsapp(db: Session, db_quote: Session, user_id: Optional[int] = None) -> List[Dict]:
     rows = (
         db.query(Chats_Whatsapp, Contact)
         .outerjoin(Contact, Chats_Whatsapp.contact_id == Contact.id)
@@ -43,11 +44,7 @@ def get_all_chats_whatsapp(db: Session, db_vmaps: Session, user_id: Optional[int
     user_ids = {chat.user_id for chat, _contact in rows}
     users_by_id = {
         user.idusuario: user
-        for user in (
-            db_vmaps.query(Usuarios)
-            .filter(Usuarios.idusuario.in_(user_ids))
-            .all()
-        )
+        for user in get_users_by_ids_quote(db_quote, user_ids)
     } if user_ids else {}
 
     return [
@@ -60,14 +57,12 @@ def get_all_chats_whatsapp(db: Session, db_vmaps: Session, user_id: Optional[int
             "user": {
                 "id": user.idusuario,
                 "username": user.usuario,
-                "name": user.nombres,
+                "name": user.nombre or user.nombres,
                 "last_name": user.apellido_paterno,
                 "second_last_name": user.apellido_materno,
-                "email": user.correo,
+                "email": user.usuario,
                 "status": user.estado,
-                "created_at": (
-                    user.fecha_registro.isoformat() if user.fecha_registro else None
-                ),
+                "created_at": None,
             }
             if user
             else None,

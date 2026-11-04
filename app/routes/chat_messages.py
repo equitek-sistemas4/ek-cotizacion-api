@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from app.database import get_db, get_db_quote, get_db_vmaps
+from app.database import get_db, get_db_quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
@@ -167,10 +167,9 @@ async def create_chat_message_route(
 async def get_chat_messages_route(
     chat_id: int,
     db: Session = Depends(get_db),
-    db_vmaps: Session = Depends(get_db_vmaps),
     db_quote: Session = Depends(get_db_quote),
 ):
-    chats = get_messages(db, db_vmaps, db_quote, chat_id)
+    chats = get_messages(db, db_quote, chat_id)
     return {
         "success": True,
         "data": [

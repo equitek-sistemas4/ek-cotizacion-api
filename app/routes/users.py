@@ -3,8 +3,8 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
 
-from app.crud.users import create_user, delete_user, get_all_users_vmaps, update_user, get_all_users
-from app.database import get_db, get_db_vmaps
+from app.crud.users import create_user, delete_user, get_all_users_quote, update_user, get_all_users
+from app.database import get_db, get_db_quote
 from app.models import UserAlertSettings
 from app.crud.users import clean_user_phone_number
 from app.utils.utils import PhoneNumberValidationError
@@ -25,16 +25,21 @@ def serialize_user(user) -> dict:
     return {
         "id": user.idusuario,
         "usuario": user.usuario,
-        "name": user.nombres,
-        "email": user.correo,
+        "name": " ".join(
+            part
+            for part in (user.nombre, user.ap_paterno, user.ap_materno)
+            if part
+        ) or user.nick or user.usuario,
+        # La tabla de cotizaciones no almacena correo ni fecha de registro.
+        "email": user.usuario,
         "status": user.estado,
-        "created_at": user.fecha_registro.isoformat() if user.fecha_registro else None,
+        "created_at": None,
     }
 
 
 @router.get("/list")
-async def get_all_users_route(db_vmaps: Session = Depends(get_db_vmaps)):
-    users = get_all_users_vmaps(db_vmaps)
+async def get_all_users_route(db_quote: Session = Depends(get_db_quote)):
+    users = get_all_users_quote(db_quote)
     return {
         "success": True,
         "data": [serialize_user(user) for user in users]

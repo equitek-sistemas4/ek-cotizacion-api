@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+from app.crud.users import get_users_by_ids_quote
 from app.models import ChatMessages, Chats, Contact, Usuarios, ncrm_coti
 from app.services.client_waiting_alerts import register_chat_message_for_sla
 
@@ -30,7 +31,6 @@ def create_chat_message(
 
 def get_messages(
     db: Session,
-    db_vmaps: Session,
     db_quote: Session,
     chat_id: int,
     limit: int = 100,
@@ -74,7 +74,7 @@ def get_messages(
     }
     users_by_id = {
         user.idusuario: user
-        for user in db_vmaps.query(Usuarios).filter(Usuarios.idusuario.in_(user_ids)).all()
+        for user in get_users_by_ids_quote(db_quote, user_ids)
     } if user_ids else {}
 
     return [

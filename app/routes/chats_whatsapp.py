@@ -10,7 +10,7 @@ from app.crud.chats_whatsapp import (
     get_chat_whatsapp_by_id,
     update_chat_whatsapp as update_chat_whatsapp_db,
 )
-from app.database import get_db, get_db_vmaps
+from app.database import get_db, get_db_quote
 
 
 router = APIRouter(prefix="/chats-whatsapp", tags=["chats-whatsapp"])
@@ -44,9 +44,9 @@ def create_chat_whatsapp_route(
 def get_all_chats_whatsapp_route(
     user_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    db_vmaps: Session = Depends(get_db_vmaps),
+    db_quote: Session = Depends(get_db_quote),
 ):
-    chats = get_all_chats_whatsapp_db(db, db_vmaps, user_id=user_id)
+    chats = get_all_chats_whatsapp_db(db, db_quote, user_id=user_id)
     return {
         "success": True,
         "data": chats,

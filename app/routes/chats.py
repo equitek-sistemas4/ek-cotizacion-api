@@ -25,7 +25,7 @@ from app.crud.contacts import (
     get_contact_by_id,
 )
 from app.config import settings
-from app.database import get_db, get_db_quote, get_db_vmaps
+from app.database import get_db, get_db_quote
 from app.models import ChatMembers, Chats, Contact, empresa, empresa_contacto
 from app.schemas.chat_messages import serialize_chat_message
 from app.services.whatsapp import WhatsAppService
@@ -295,7 +295,6 @@ async def get_chat_messages_route(
     chat_id: int,
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    db_vmaps: Session = Depends(get_db_vmaps),
     db_quote: Session = Depends(get_db_quote),
 ):
     chat = get_chat_by_id(db, chat_id)
@@ -305,7 +304,7 @@ async def get_chat_messages_route(
             "message": "Chat no encontrado",
         }
 
-    messages = get_messages(db, db_vmaps, db_quote, chat_id, limit)
+    messages = get_messages(db, db_quote, chat_id, limit)
     return {
         "success": True,
         "data": {
