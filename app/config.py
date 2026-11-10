@@ -12,6 +12,8 @@ class Settings:
     whatsapp_access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
     whatsapp_verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
     whatsapp_default_country_code = os.getenv("WHATSAPP_DEFAULT_COUNTRY_CODE", "52")
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    resend_from_email = os.getenv("RESEND_FROM_EMAIL")
     
     mysql_host = os.getenv("MYSQL_HOST")
     mysql_port = os.getenv("MYSQL_PORT")

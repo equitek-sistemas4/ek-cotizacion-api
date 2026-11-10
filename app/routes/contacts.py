@@ -1,3 +1,5 @@
+import logging
+
 from app.crud.chats_members import get_members_availables_of_chat
 from typing import Optional
 
@@ -18,11 +20,18 @@ from app.crud.contacts import (
     get_active_companies,
     update_contact,
 )
+from app.config import settings
 from app.database import get_db, get_db_quote
+from app.models import Chats
+from app.services.whatsapp import WhatsAppService
 from app.utils.utils import PhoneNumberValidationError
 
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
+logger = logging.getLogger(__name__)
+
+CONTACT_REQUEST_ALERT_TEMPLATE = "alert_contact_request"
+CONTACT_REQUESTS_URL = "https://ek-ws.com.mx/contact-requests"
 
 
 def serialize_contact(contact) -> dict:
@@ -255,6 +264,7 @@ async def create_contact_request_route(
     idempresa_contacto: Optional[int] = Form(None),
     fk_idempresa: Optional[int] = Form(None),
     contact_email: Optional[str] = Form(None),
+    user_phone: str = Form(None),
     db: Session = Depends(get_db),
 ):
     try:
@@ -272,6 +282,32 @@ async def create_contact_request_route(
         )
     except PhoneNumberValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    chat = db.get(Chats, contact_request.chat_id)
+    if chat is None:
+        logger.warning(
+            "No se envió la alerta de solicitud de contacto: chat inexistente %s",
+            contact_request.chat_id,
+        )
+    else:
+        if not user_phone:
+            logger.warning(
+                "No se envió la alerta de solicitud de contacto: sin user_phone para el usuario %s",
+                chat.user_id,
+            )
+        else:
+            try:
+                await WhatsAppService().send_template_message(
+                    to=user_phone,
+                    template=CONTACT_REQUEST_ALERT_TEMPLATE,
+                    parameters=[str(chat.quotation_id), CONTACT_REQUESTS_URL],
+                    language_code=settings.whatsapp_alert_template_language,
+                )
+            except Exception:
+                logger.exception(
+                    "No se pudo enviar la alerta de solicitud de contacto %s",
+                    contact_request.id,
+                )
 
     return {
         "success": True,
