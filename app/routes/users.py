@@ -3,7 +3,14 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
 
-from app.crud.users import create_user, delete_user, get_all_users_quote, update_user, get_all_users
+from app.crud.users import (
+    create_user,
+    delete_user,
+    get_all_users_quote,
+    get_user_detail_quote,
+    update_user,
+    get_all_users,
+)
 from app.database import get_db, get_db_quote
 from app.models import UserAlertSettings
 from app.crud.users import clean_user_phone_number
@@ -43,6 +50,47 @@ async def get_all_users_route(db_quote: Session = Depends(get_db_quote)):
     return {
         "success": True,
         "data": [serialize_user(user) for user in users]
+    }
+
+
+@router.get("/{user_id}")
+async def get_user_detail_route(
+    user_id: int,
+    db_quote: Session = Depends(get_db_quote),
+):
+    result = get_user_detail_quote(db_quote, user_id)
+    if result is None:
+        return {
+            "success": False,
+            "message": "Usuario no encontrado",
+        }
+
+    user, personal = result
+    return {
+        "success": True,
+        "data": {
+            "usuario": {
+                "idusuario": user.idusuario,
+                "fk_idtipo": user.fk_idtipo,
+                "fk_idpersonal": user.fk_idpersonal,
+                "usuario": user.usuario,
+                "corr": user.corr,
+                "estado": user.estado,
+            },
+            "usuario_personal": (
+                {
+                    "id_personal": personal.id_personal,
+                    "nombre": personal.nombre,
+                    "nick": personal.nick,
+                    "ap_paterno": personal.ap_paterno,
+                    "ap_materno": personal.ap_materno,
+                    "tel": personal.tel,
+                    "cel": personal.cel,
+                }
+                if personal is not None
+                else None
+            ),
+        },
     }
 
 

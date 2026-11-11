@@ -39,6 +39,16 @@ def get_all_users_quote(db_quote: Session):
     )
 
 
+def get_user_detail_quote(db_quote: Session, user_id: int):
+    """Obtiene el usuario de cotizaciones junto con sus datos personales."""
+    return (
+        db_quote.query(usuarios, usuario_personal)
+        .outerjoin(usuario_personal, usuarios.fk_idpersonal == usuario_personal.id_personal)
+        .filter(usuarios.idusuario == user_id)
+        .first()
+    )
+
+
 def create_user(
     db: Session,
     name: str,
