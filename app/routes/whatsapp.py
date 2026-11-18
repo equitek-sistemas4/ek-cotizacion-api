@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.whatsapp import WhatsAppTemplateRequestSimple, WhatsAppTemplateRequest
 from app.services.whatsapp import WhatsAppService
+from app.services.whatsapp_pending_alerts import schedule_pending_whatsapp_alert
 from app.routes.chat_websocket import whatsapp_manager
 from app.database import get_db
 from app.crud.messages import (
@@ -160,6 +161,7 @@ async def receive_webhook(
         db.commit()
 
         for incoming_message in incoming_messages:
+            schedule_pending_whatsapp_alert(incoming_message["id"])
             broadcast_result = await whatsapp_manager.broadcast_message(incoming_message)
             logger.info(
                 "Webhook WhatsApp difundido por WebSocket: message_id=%s phone_number=%s "

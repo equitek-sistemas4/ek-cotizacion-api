@@ -401,12 +401,13 @@ def get_received_messages(
             Messages.phone_number == normalize_phone_number(phone_number)
         )
 
-    return (
+    messages = (
         query
-        .order_by(Messages.created_at.asc())
+        .order_by(Messages.created_at.desc(), Messages.id.desc())
         .limit(limit)
         .all()
     )
+    return list(reversed(messages))
 
 
 def get_chat_messages(
