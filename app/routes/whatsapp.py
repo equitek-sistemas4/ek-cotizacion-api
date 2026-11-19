@@ -16,6 +16,7 @@ from app.crud.messages import (
     send_and_save_text_message,
     send_and_save_template_message,
 )
+from app.crud.notifications import create_whatsapp_notifications_for_phone
 from app.utils.utils import (
     PhoneNumberValidationError,
     build_incoming_message,
@@ -129,6 +130,7 @@ async def receive_webhook(
     received_messages = 0
     received_statuses = 0
     incoming_messages = []
+    created_notifications = 0
 
     try:
         for entry in payload.get("entry", []):
@@ -157,6 +159,12 @@ async def receive_webhook(
                     saved_message_ids.append(incoming_message.id)
                     saved_messages += 1
                     incoming_messages.append(serialize_message(incoming_message))
+                    created_notifications += len(
+                        create_whatsapp_notifications_for_phone(
+                            db,
+                            phone_number=incoming_message.phone_number,
+                        )
+                    )
 
         db.commit()
 
@@ -188,6 +196,7 @@ async def receive_webhook(
         response["received_statuses"] = received_statuses
         response["saved_messages"] = saved_messages
         response["saved_message_ids"] = saved_message_ids
+        response["created_notifications"] = created_notifications
 
         return response
     except Exception as exc:

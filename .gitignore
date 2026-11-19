@@ -3,3 +3,6 @@
 __pycache__/
 *.py[cod]
 uploads/
+.venv/
+WHATSAPP_SETUP.md
+tests/

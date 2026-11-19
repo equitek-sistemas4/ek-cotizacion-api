@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Notifications
+from app.models import Chats_Whatsapp, Contact, Notifications
 
 
 def get_unread_notifications(db: Session, user_id: int) -> List[Notifications]:
@@ -24,6 +24,33 @@ def create_notification(
     db.commit()
     db.refresh(notification)
     return notification
+
+
+def create_whatsapp_notifications_for_phone(
+    db: Session,
+    phone_number: str,
+) -> List[Notifications]:
+    """Create one unread notification for every active WhatsApp chat of a phone."""
+    chats = (
+        db.query(Chats_Whatsapp)
+        .join(Contact, Chats_Whatsapp.contact_id == Contact.id)
+        .filter(
+            Chats_Whatsapp.status == 1,
+            Contact.phone_number == phone_number,
+        )
+        .all()
+    )
+
+    notifications = [
+        Notifications(
+            user_id=chat.user_id,
+            section="whatsapp",
+            chat_id=chat.id,
+        )
+        for chat in chats
+    ]
+    db.add_all(notifications)
+    return notifications
 
 
 def read_notifications(
